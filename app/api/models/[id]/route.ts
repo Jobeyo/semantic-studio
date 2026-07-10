@@ -1,0 +1,47 @@
+import { NextRequest } from 'next/server';
+import { auth } from '@/auth';
+import prisma from '@/lib/db';
+
+export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const session = await auth();
+    if (!session?.user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const { id } = await params;
+    const model = await prisma.semanticModel.findUnique({
+      where: { id: parseInt(id) },
+      include: { views: { include: { columns: { orderBy: { id: 'asc' } } }, orderBy: { id: 'asc' } } },
+    });
+    if (!model) return Response.json({ error: 'Not found' }, { status: 404 });
+    return Response.json(model);
+  } catch (e) {
+    return Response.json({ error: 'Server error' }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const session = await auth();
+    if (!session?.user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const { id } = await params;
+    const updates = await request.json();
+    const model = await prisma.semanticModel.update({
+      where: { id: parseInt(id) },
+      data: updates,
+    });
+    return Response.json(model);
+  } catch (e) {
+    return Response.json({ error: 'Server error' }, { status: 500 });
+  }
+}
+
+export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const session = await auth();
+    if (!session?.user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const { id } = await params;
+    await prisma.semanticModel.delete({ where: { id: parseInt(id) } });
+    return Response.json({ success: true });
+  } catch (e) {
+    return Response.json({ error: 'Server error' }, { status: 500 });
+  }
+}

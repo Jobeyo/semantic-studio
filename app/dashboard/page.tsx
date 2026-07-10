@@ -8,10 +8,10 @@ export default function DashboardPage() {
   const name = session?.user?.name?.split(' ')[0] ?? '';
 
   const cards = [
-    { title: 'Modeller', description: 'Skapa och hantera semantiska modeller', href: '/models', icon: Database, color: 'bg-indigo-50 text-indigo-600' },
-    { title: 'Anslutningar', description: 'Konfigurera databaskopplingar', href: '/connections', icon: GitBranch, color: 'bg-blue-50 text-blue-600' },
-    { title: 'Glossary', description: 'Affärstermer och definitioner', href: '/glossary', icon: BookOpen, color: 'bg-green-50 text-green-600' },
-    { title: 'Ändringslogg', description: 'Se vad som ändrats och av vem', href: '/history', icon: History, color: 'bg-amber-50 text-amber-600' },
+    { title: 'Modeller', description: 'Skapa och hantera semantiska modeller', href: '/models', icon: Database, color: 'bg-indigo-50 text-indigo-600', count: null },
+    { title: 'Anslutningar', description: 'Konfigurera databaskopplingar', href: '/connections', icon: GitBranch, color: 'bg-blue-50 text-blue-600', count: null },
+    { title: 'Glossary', description: 'Affärstermer och definitioner', href: '/glossary', icon: BookOpen, color: 'bg-green-50 text-green-600', count: null },
+    { title: 'Ändringslogg', description: 'Se vad som ändrats och av vem', href: '/history', icon: History, color: 'bg-amber-50 text-amber-600', count: null },
   ];
 
   return (
@@ -20,6 +20,7 @@ export default function DashboardPage() {
         <h1 className="text-xl font-semibold text-gray-900">Välkommen{name ? `, ${name}` : ''}!</h1>
         <p className="text-sm text-gray-500 mt-1">Semantic Studio – din plats för att bygga och hantera semantiska modeller</p>
       </div>
+
       <div className="flex-1 overflow-y-auto p-8">
         <div className="grid grid-cols-2 gap-4 max-w-3xl">
           {cards.map(({ title, description, href, icon: Icon, color }) => (
@@ -36,6 +37,7 @@ export default function DashboardPage() {
             </Link>
           ))}
         </div>
+
         <div className="mt-8 max-w-3xl">
           <div className="bg-indigo-600 rounded-xl p-6 flex items-center justify-between">
             <div>
