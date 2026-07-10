@@ -1,0 +1,93 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Organization {
+  id        Int      @id @default(autoincrement())
+  name      String
+  createdAt DateTime @default(now())
+  users     User[]
+  models    SemanticModel[]
+}
+
+model User {
+  id           Int          @id @default(autoincrement())
+  name         String
+  email        String       @unique
+  passwordHash String
+  role         String       @default("editor") // admin, editor, viewer
+  orgId        Int
+  org          Organization @relation(fields: [orgId], references: [id])
+  createdAt    DateTime     @default(now())
+  changelogs   Changelog[]
+}
+
+model SemanticModel {
+  id          Int          @id @default(autoincrement())
+  name        String
+  description String?
+  orgId       Int
+  org         Organization @relation(fields: [orgId], references: [id])
+  sourceType  String       // postgres, sqlserver, mysql, sqlite
+  sourceConfig Json        // krypterad anslutningsinformation
+  status      String       @default("draft") // draft, published, archived
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  views       ModelView[]
+  versions    ModelVersion[]
+  changelogs  Changelog[]
+}
+
+model ModelView {
+  id          Int           @id @default(autoincrement())
+  modelId     Int
+  model       SemanticModel @relation(fields: [modelId], references: [id])
+  name        String        // Vyns namn i databasen
+  displayName String        // Affärsnamn
+  description String?
+  type        String        // fact, dimension, measure
+  sql         String        // Den SQL-fråga som skapar vyn
+  columns     ViewColumn[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model ViewColumn {
+  id          Int        @id @default(autoincrement())
+  viewId      Int
+  view        ModelView  @relation(fields: [viewId], references: [id])
+  name        String     // Kolumnnamn i DB
+  displayName String     // Affärsnamn
+  description String?
+  dataType    String     // string, number, date, boolean
+  isKey       Boolean    @default(false)
+  isMeasure   Boolean    @default(false)
+  format      String?    // ex. "#,##0.00", "YYYY-MM-DD"
+  createdAt   DateTime   @default(now())
+}
+
+model ModelVersion {
+  id          Int           @id @default(autoincrement())
+  modelId     Int
+  model       SemanticModel @relation(fields: [modelId], references: [id])
+  version     Int
+  snapshot    Json          // Hela modellens snapshot vid denna version
+  createdAt   DateTime      @default(now())
+  createdBy   Int?
+}
+
+model Changelog {
+  id        Int           @id @default(autoincrement())
+  modelId   Int
+  model     SemanticModel @relation(fields: [modelId], references: [id])
+  userId    Int?
+  user      User?         @relation(fields: [userId], references: [id])
+  action    String        // created, updated, published, deleted
+  details   String?
+  createdAt DateTime      @default(now())
+}
