@@ -56,6 +56,7 @@ export default function ModelDetailPage() {
   const [importing, setImporting] = useState(false);
   const [syncStatus, setSyncStatus] = useState<Record<number, boolean>>({});
   const [executingSql, setExecutingSql] = useState<number | null>(null);
+  const [sqlPreview, setSqlPreview] = useState<{viewId: number; name: string; sql: string} | null>(null);
   const [showChat, setShowChat] = useState(false);
   const [chatMessages, setChatMessages] = useState<{role: 'user'|'assistant'; content: string}[]>([]);
   const [chatInput, setChatInput] = useState('');
@@ -134,6 +135,7 @@ export default function ModelDetailPage() {
   }
 
   async function importFromDB() {
+    if (!confirm('OBS! Importera från DB ersätter ALLA befintliga vyer i Studio med vyer från semantic_layer-schemat i databasen. Fortsätta?')) return;
     setImporting(true);
     try {
       const res = await fetch(`/api/models/${id}/import`, { method: 'POST' });
@@ -152,6 +154,7 @@ export default function ModelDetailPage() {
   }
 
   async function generateWithAI() {
+    if (!confirm('OBS! Generera med AI ersätter ALLA befintliga vyer i Studio med AI-genererade vyer. Vyerna i databasen påverkas inte. Fortsätta?')) return;
     setGeneratingSchema(true);
     try {
       const res = await fetch(`/api/models/${id}/generate`, { method: 'POST' });
@@ -169,6 +172,11 @@ export default function ModelDetailPage() {
     if (!confirm('Ta bort modellen?')) return;
     await fetch(`/api/models/${id}`, { method: 'DELETE' });
     window.location.href = '/models';
+  }
+
+  function showSqlPreview(viewId: number) {
+    const view = model?.views.find(v => v.id === viewId);
+    if (view) setSqlPreview({ viewId, name: view.name, sql: view.sql });
   }
 
   async function deleteView(viewId: number, viewName: string) {

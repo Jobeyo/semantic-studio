@@ -48,7 +48,11 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
         colsByView[col.table_name].push(col);
       }
 
-      // Ta bort befintliga vyer och importera nya
+      // Ta bort befintliga vyer och importera nya (kolumner måste tas bort först)
+      const existingViews = await prisma.modelView.findMany({ where: { modelId: parseInt(id) } });
+      for (const v of existingViews) {
+        await prisma.viewColumn.deleteMany({ where: { viewId: v.id } });
+      }
       await prisma.modelView.deleteMany({ where: { modelId: parseInt(id) } });
 
       const views = await Promise.all(viewsRes.rows.map(async (v: any) => {
