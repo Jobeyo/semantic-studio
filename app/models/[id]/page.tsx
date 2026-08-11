@@ -270,7 +270,10 @@ export default function ModelDetailPage() {
                       </button>
                     )}
                     {syncStatus[view.id] === true && (
-                      <span className="text-xs px-2 py-0.5 bg-green-50 text-green-600 border border-green-200 rounded-full">Synkad</span>
+                      <button onClick={e => { e.stopPropagation(); showSqlPreview(view.id); }}
+                        className="text-xs px-2 py-0.5 bg-green-50 text-green-600 border border-green-200 rounded-full hover:bg-green-100">
+                        ✓ Synkad
+                      </button>
                     )}
                     <Link href={`/models/${id}/views/${view.id}`} onClick={e => e.stopPropagation()}
                       className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded">

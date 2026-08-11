@@ -28,7 +28,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     try {
       // Säkerställ att semantic_layer schema finns
       await client.query('CREATE SCHEMA IF NOT EXISTS semantic_layer');
-      await client.query(view.sql);
+      let sqlToRun = view.sql;
+      if (!sqlToRun.trim().toUpperCase().startsWith('CREATE')) {
+        sqlToRun = `CREATE OR REPLACE VIEW semantic_layer."${view.name}" AS\n${sqlToRun}`;
+      }
+      await client.query(sqlToRun);
       await client.end();
       return Response.json({ success: true });
     } catch (e) {
