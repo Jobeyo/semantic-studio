@@ -54,6 +54,8 @@ export default function ModelDetailPage() {
   const [expandedViews, setExpandedViews] = useState<Set<number>>(new Set());
   const [generatingSchema, setGeneratingSchema] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<Record<number, boolean>>({});
+  const [executingSql, setExecutingSql] = useState<number | null>(null);
   const [showChat, setShowChat] = useState(false);
   const [chatMessages, setChatMessages] = useState<{role: 'user'|'assistant'; content: string}[]>([]);
   const [chatInput, setChatInput] = useState('');
@@ -63,6 +65,11 @@ export default function ModelDetailPage() {
 
   useEffect(() => {
     fetch(`/api/models/${id}`).then(r => r.json()).then(data => { setModel(data); setLoading(false); }).catch(() => setLoading(false));
+    fetch(`/api/models/${id}/sync-status`).then(r => r.json()).then(data => {
+      const status: Record<number, boolean> = {};
+      data.syncStatus?.forEach((s: any) => { status[s.id] = s.existsInDb; });
+      setSyncStatus(status);
+    }).catch(() => {});
   }, [id]);
 
   function toggleView(viewId: number) {
@@ -96,12 +103,34 @@ export default function ModelDetailPage() {
               assistantText += event.text;
               setChatMessages(prev => [...prev.slice(0, -1), { role: 'assistant', content: assistantText }]);
               chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+            } else if (event.type === 'model_updated') {
+              // Ladda om modellen när AI gjort ändringar
+              fetch(`/api/models/${id}`).then(r => r.json()).then(data => setModel(data));
             }
           } catch {}
         }
       }
     } catch (e) { console.error('Chat error:', e); }
     setChatLoading(false);
+  }
+
+  async function executeSql(viewId: number) {
+    setExecutingSql(viewId);
+    try {
+      const res = await fetch(`/api/models/${id}/execute-sql`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ viewId }),
+      });
+      if (res.ok) {
+        setSyncStatus(prev => ({ ...prev, [viewId]: true }));
+        alert('Vyn skapades i databasen!');
+      } else {
+        const err = await res.json();
+        alert('Fel: ' + err.error);
+      }
+    } catch {}
+    setExecutingSql(null);
   }
 
   async function importFromDB() {
@@ -140,6 +169,12 @@ export default function ModelDetailPage() {
     if (!confirm('Ta bort modellen?')) return;
     await fetch(`/api/models/${id}`, { method: 'DELETE' });
     window.location.href = '/models';
+  }
+
+  async function deleteView(viewId: number, viewName: string) {
+    if (!confirm(`Ta bort vyn "${viewName}"? Den tas bara bort från Studio, inte från databasen.`)) return;
+    await fetch(`/api/models/${id}/views/${viewId}`, { method: 'DELETE' });
+    setModel(prev => prev ? { ...prev, views: prev.views.filter(v => v.id !== viewId) } : prev);
   }
 
   if (loading) return <div className="flex items-center justify-center h-full"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>;
@@ -227,10 +262,24 @@ export default function ModelDetailPage() {
                       {view.description && <p className="text-sm text-gray-500 mt-0.5">{view.description}</p>}
                     </div>
                     <span className="text-xs text-gray-400">{view.columns.length} kolumner</span>
+                    {syncStatus[view.id] === false && (
+                      <button onClick={e => { e.stopPropagation(); executeSql(view.id); }} disabled={executingSql === view.id}
+                        className="flex items-center gap-1 text-xs px-2 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-lg hover:bg-amber-100 disabled:opacity-50">
+                        {executingSql === view.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <></>}
+                        Kör SQL i DB
+                      </button>
+                    )}
+                    {syncStatus[view.id] === true && (
+                      <span className="text-xs px-2 py-0.5 bg-green-50 text-green-600 border border-green-200 rounded-full">Synkad</span>
+                    )}
                     <Link href={`/models/${id}/views/${view.id}`} onClick={e => e.stopPropagation()}
                       className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded">
                       <Edit2 className="w-4 h-4" />
                     </Link>
+                    <button onClick={e => { e.stopPropagation(); deleteView(view.id, view.displayName); }}
+                      className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                   {expandedViews.has(view.id) && (
                     <div className="border-t border-gray-100">
