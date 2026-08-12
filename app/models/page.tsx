@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Plus, Database, Clock, Loader2, ChevronRight } from 'lucide-react';
+import { Plus, Database, Clock, Loader2, ChevronRight, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 
 interface Model {
@@ -35,6 +35,14 @@ const sourceColors: Record<string, string> = {
 export default function ModelsPage() {
   const [models, setModels] = useState<Model[]>([]);
   const [loading, setLoading] = useState(true);
+
+  async function deleteModel(e: React.MouseEvent, modelId: number, modelName: string) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!confirm(`Ta bort modellen "${modelName}"? Vyerna i databasen påverkas inte, bara metadata i Studio.`)) return;
+    await fetch(`/api/models/${modelId}`, { method: 'DELETE' });
+    setModels(prev => prev.filter(m => m.id !== modelId));
+  }
 
   useEffect(() => {
     fetch('/api/models').then(r => r.json()).then(data => { setModels(data); setLoading(false); }).catch(() => setLoading(false));
@@ -88,7 +96,13 @@ export default function ModelsPage() {
                       </div>
                     </div>
                   </div>
-                  <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-gray-500 transition-colors" />
+                  <div className="flex items-center gap-2">
+                    <button onClick={e => deleteModel(e, model.id, model.name)}
+                      className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                    <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-gray-500 transition-colors" />
+                  </div>
                 </div>
               </Link>
             );

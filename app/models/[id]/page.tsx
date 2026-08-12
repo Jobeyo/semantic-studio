@@ -31,6 +31,7 @@ interface Model {
   name: string;
   description: string | null;
   sourceType: string;
+  sourceConfig: Record<string, unknown>;
   status: string;
   views: View[];
 }
@@ -53,6 +54,12 @@ export default function ModelDetailPage() {
   const [loading, setLoading] = useState(true);
   const [expandedViews, setExpandedViews] = useState<Set<number>>(new Set());
   const [generatingSchema, setGeneratingSchema] = useState(false);
+  const [showGenerateModal, setShowGenerateModal] = useState(false);
+  const [generateSourceSchema, setGenerateSourceSchema] = useState('');
+  const [generateTargetSchema, setGenerateTargetSchema] = useState('');
+  const [availableSchemas, setAvailableSchemas] = useState<string[]>([]);
+  const [generatedViews, setGeneratedViews] = useState<{name: string; displayName: string; type: string; sql: string; columns: any[]}[]>([]);
+  const [showSqlReview, setShowSqlReview] = useState(false);
   const [importing, setImporting] = useState(false);
   const [syncStatus, setSyncStatus] = useState<Record<number, boolean>>({});
   const [executingSql, setExecutingSql] = useState<number | null>(null);
@@ -154,14 +161,56 @@ export default function ModelDetailPage() {
     setImporting(false);
   }
 
+  async function openGenerateModal() {
+    // Hämta tillgängliga scheman via server (har tillgång till lösenord)
+    try {
+      const res = await fetch(`/api/models/${id}/schemas`);
+      if (res.ok) {
+        const data = await res.json();
+        setAvailableSchemas(data.schemas ?? []);
+      }
+    } catch {}
+    setGenerateSourceSchema('');
+    setGenerateTargetSchema((model?.sourceConfig as any)?.schema ?? 'semantic_layer');
+    setShowGenerateModal(true);
+  }
+
   async function generateWithAI() {
-    if (!confirm('OBS! Generera med AI ersätter ALLA befintliga vyer i Studio med AI-genererade vyer. Vyerna i databasen påverkas inte. Fortsätta?')) return;
+    if (!generateSourceSchema) { alert('Välj ett källschema'); return; }
+    if (!generateTargetSchema) { alert('Välj ett målschema'); return; }
+    setShowGenerateModal(false);
     setGeneratingSchema(true);
     try {
-      const res = await fetch(`/api/models/${id}/generate`, { method: 'POST' });
-      if (res.ok) { const data = await res.json(); setModel(prev => prev ? { ...prev, views: data.views } : prev); }
+      const res = await fetch(`/api/models/${id}/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sourceSchema: generateSourceSchema, targetSchema: generateTargetSchema }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        // Visa SQL för granskning istället för att spara direkt
+        setGeneratedViews(data.views);
+        setShowSqlReview(true);
+      }
     } catch {}
     setGeneratingSchema(false);
+  }
+
+  async function confirmGeneratedViews() {
+    setShowSqlReview(false);
+    // Spara vyerna till Studio
+    try {
+      const res = await fetch(`/api/models/${id}/generate/confirm`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ views: generatedViews }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setModel(prev => prev ? { ...prev, views: data.views, status: 'draft' } : prev);
+        setSyncStatus({});
+      }
+    } catch {}
   }
 
   async function publishModel() {
@@ -240,11 +289,11 @@ export default function ModelDetailPage() {
               {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Table className="w-4 h-4 text-green-500" />}
               Importera från DB
             </button>
-            <button onClick={generateWithAI} disabled={generatingSchema}
-              className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50">
-              {generatingSchema ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-indigo-500" />}
+            <Link href={`/models/${id}/generate`}
+              className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">
+              <Sparkles className="w-4 h-4 text-indigo-500" />
               Generera med AI
-            </button>
+            </Link>
             {model.status !== 'published' ? (
               <button onClick={publishModel} className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700">
                 <CheckCircle className="w-4 h-4" /> Publicera
@@ -281,11 +330,11 @@ export default function ModelDetailPage() {
                 <Table className="w-10 h-10 mx-auto mb-3 opacity-30" />
                 <p className="font-medium text-gray-600 mb-1">Inga vyer ännu</p>
                 <p className="text-sm mb-4">Lägg till vyer manuellt eller låt AI generera dem</p>
-                <button onClick={generateWithAI} disabled={generatingSchema}
+                <Link href={`/models/${id}/generate`}
                   className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 mx-auto">
-                  {generatingSchema ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                  <Sparkles className="w-4 h-4" />
                   Generera med AI
-                </button>
+                </Link>
               </div>
             ) : (
               model.views.map(view => (

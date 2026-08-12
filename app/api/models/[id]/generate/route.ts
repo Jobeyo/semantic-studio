@@ -4,7 +4,7 @@ import prisma from '@/lib/db';
 import { Client } from 'pg';
 import Anthropic from '@anthropic-ai/sdk';
 
-async function getDbSchema(sourceType: string, config: any): Promise<string> {
+async function getDbSchema(sourceType: string, config: any, sourceSchema: string): Promise<string> {
   if (sourceType === 'postgres') {
     const client = new Client({
       host: config.host, port: config.port, database: config.database,
@@ -17,16 +17,16 @@ async function getDbSchema(sourceType: string, config: any): Promise<string> {
       const res = await client.query(`
         SELECT table_name, column_name, data_type, is_nullable
         FROM information_schema.columns
-        WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
+        WHERE table_schema = $1
         ORDER BY table_name, ordinal_position
-      `);
+      `, [sourceSchema]);
       await client.end();
       const tables: Record<string, string[]> = {};
       for (const row of res.rows) {
         if (!tables[row.table_name]) tables[row.table_name] = [];
         tables[row.table_name].push(`  ${row.column_name} (${row.data_type})`);
       }
-      return Object.entries(tables).map(([t, cols]) => `${t}:\n${cols.join('\n')}`).join('\n\n');
+      return Object.entries(tables).map(([t, cols]) => `${sourceSchema}.${t}:\n${cols.join('\n')}`).join('\n\n');
     } finally {
       try { await client.end(); } catch {}
     }
@@ -34,48 +34,61 @@ async function getDbSchema(sourceType: string, config: any): Promise<string> {
   throw new Error(`Unsupported source type: ${sourceType}`);
 }
 
-export async function POST(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth();
     if (!session?.user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const { id } = await params;
+    const body = await request.json();
+    const { sourceSchema, targetSchema } = body;
+    console.log('Generate request:', { sourceSchema, targetSchema, modelId: id });
 
     const model = await prisma.semanticModel.findUnique({ where: { id: parseInt(id) } });
     if (!model) return Response.json({ error: 'Not found' }, { status: 404 });
 
     const config = model.sourceConfig as any;
-    const dbSchema = await getDbSchema(model.sourceType, config);
+    // Använd källdatabas om angiven, annars modellens anslutning
+    const sourceDb = body.sourceDb ?? config;
+    console.log('Source DB config:', { host: sourceDb.host, port: sourceDb.port, database: sourceDb.database, user: sourceDb.user });
+    const dbSchema = await getDbSchema(model.sourceType, sourceDb, sourceSchema);
+    console.log('DB schema length:', dbSchema.length);
 
     const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
     const msg = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 4000,
+      max_tokens: 8000,
       messages: [{
         role: 'user',
         content: `Du är en expert på semantiska datamodeller och Business Intelligence.
 
-Analysera följande databasschema och skapa ett semantiskt lager med vyer.
+Analysera följande databasschema och skapa ett semantiskt lager med vyer i schemat "${targetSchema}".
 
-# Databasschema
+# Databasschema (källschema: ${sourceSchema})
 ${dbSchema}
 
-Returnera EXAKT följande JSON-format (inga kommentarer, inga förklaringar):
+REGLER:
+1. SQL ska referera EXAKT till tabellerna i källschemat ovan med schema-prefix: ${sourceSchema}.table_name
+2. Vyer ska skapas i målschemat: ${targetSchema}
+3. Använd svenska affärsnamn i displayName
+4. Identifiera fakta-, dimensions- och måttvyer
+
+Returnera EXAKT följande JSON-format utan kommentarer:
 {
   "views": [
     {
       "name": "view_name",
       "displayName": "Affärsnamn på svenska",
-      "description": "Beskrivning av vad vyn representerar",
+      "description": "Beskrivning",
       "type": "fact|dimension|measure",
-      "sql": "CREATE OR REPLACE VIEW semantic_layer.view_name AS SELECT ...",
+      "sql": "CREATE OR REPLACE VIEW ${targetSchema}.\\"view_name\\" AS SELECT ...",
       "columns": [
         {
           "name": "column_name",
           "displayName": "Affärsnamn",
-          "description": "Vad kolumnen representerar",
+          "description": "Beskrivning",
           "dataType": "string|number|date|boolean",
-          "isKey": true|false,
-          "isMeasure": true|false,
+          "isKey": false,
+          "isMeasure": false,
           "format": null
         }
       ]
@@ -87,38 +100,23 @@ Returnera EXAKT följande JSON-format (inga kommentarer, inga förklaringar):
 
     const text = msg.content[0].type === 'text' ? msg.content[0].text : '';
     const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return Response.json({ error: 'AI kunde inte generera schema' }, { status: 500 });
+    if (!jsonMatch) {
+      console.error('AI response (no JSON found):', text.slice(0, 500));
+      return Response.json({ error: 'AI kunde inte generera schema: ' + text.slice(0, 200) }, { status: 500 });
+    }
+    
+    let generated;
+    try {
+      generated = JSON.parse(jsonMatch[0]);
+    } catch (parseError) {
+      console.error('JSON parse error:', (parseError as Error).message);
+      console.error('Raw text length:', text.length);
+      // Försök begränsa antalet vyer om JSON är för långt
+      return Response.json({ error: 'AI genererade för mycket data. Försök med ett schema med färre tabeller.' }, { status: 500 });
+    }
+    // Returnera vyer utan att spara – användaren granskar SQL först
+    return Response.json({ views: generated.views });
 
-    const generated = JSON.parse(jsonMatch[0]);
-
-    // Spara vyer till databasen
-    await prisma.modelView.deleteMany({ where: { modelId: parseInt(id) } });
-    const views = await Promise.all(generated.views.map(async (v: any) => {
-      return prisma.modelView.create({
-        data: {
-          modelId: parseInt(id),
-          name: v.name,
-          displayName: v.displayName,
-          description: v.description,
-          type: v.type,
-          sql: v.sql,
-          columns: {
-            create: v.columns.map((c: any) => ({
-              name: c.name,
-              displayName: c.displayName,
-              description: c.description,
-              dataType: c.dataType,
-              isKey: c.isKey ?? false,
-              isMeasure: c.isMeasure ?? false,
-              format: c.format ?? null,
-            })),
-          },
-        },
-        include: { columns: true },
-      });
-    }));
-
-    return Response.json({ views });
   } catch (e) {
     console.error('Generate error:', e);
     return Response.json({ error: (e as Error).message }, { status: 500 });
