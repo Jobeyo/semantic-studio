@@ -39,9 +39,16 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id:
     const session = await auth();
     if (!session?.user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const { id } = await params;
+    // Ta bort kolumner → vyer → modell i rätt ordning
+    const views = await prisma.modelView.findMany({ where: { modelId: parseInt(id) } });
+    for (const view of views) {
+      await prisma.viewColumn.deleteMany({ where: { viewId: view.id } });
+    }
+    await prisma.modelView.deleteMany({ where: { modelId: parseInt(id) } });
     await prisma.semanticModel.delete({ where: { id: parseInt(id) } });
     return Response.json({ success: true });
   } catch (e) {
-    return Response.json({ error: 'Server error' }, { status: 500 });
+    console.error('Delete model error:', e);
+    return Response.json({ error: (e as Error).message }, { status: 500 });
   }
 }
