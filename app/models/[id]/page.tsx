@@ -105,8 +105,9 @@ export default function ModelDetailPage() {
               setChatMessages(prev => [...prev.slice(0, -1), { role: 'assistant', content: assistantText }]);
               chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
             } else if (event.type === 'model_updated') {
-              // Ladda om modellen när AI gjort ändringar
+              // Ladda om modellen och sätt till draft
               fetch(`/api/models/${id}`).then(r => r.json()).then(data => setModel(data));
+              fetch(`/api/models/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'draft' }) });
             }
           } catch {}
         }
@@ -164,6 +165,32 @@ export default function ModelDetailPage() {
   }
 
   async function publishModel() {
+    if (!model) return;
+    const unsynced = model.views.filter(v => syncStatus[v.id] === false);
+    const msg = unsynced.length > 0
+      ? `Publicera modellen? ${unsynced.length} nya/ej synkade vyer kommer att skapas i databasen: ${unsynced.map(v => v.name).join(', ')}`
+      : 'Publicera modellen? Metadata-ändringar (namn, beskrivningar) sparas i Studio. Vyer som redan finns i databasen påverkas inte.';
+    if (!confirm(msg)) return;
+    // Kör SQL för alla ej synkade vyer
+    for (const view of unsynced) {
+      try {
+        const res = await fetch(`/api/models/${id}/execute-sql`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ viewId: view.id }),
+        });
+        if (res.ok) setSyncStatus(prev => ({ ...prev, [view.id]: true }));
+        else {
+          const err = await res.json();
+          alert(`Fel vid körning av ${view.name}: ${err.error}`);
+          return;
+        }
+      } catch {
+        alert(`Fel vid körning av ${view.name}`);
+        return;
+      }
+    }
+    // Sätt status till published
     await fetch(`/api/models/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'published' }) });
     setModel(prev => prev ? { ...prev, status: 'published' } : prev);
   }
@@ -218,9 +245,16 @@ export default function ModelDetailPage() {
               {generatingSchema ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4 text-indigo-500" />}
               Generera med AI
             </button>
-            {model.status !== 'published' && (
+            {model.status !== 'published' ? (
               <button onClick={publishModel} className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700">
                 <CheckCircle className="w-4 h-4" /> Publicera
+              </button>
+            ) : (
+              <button onClick={async () => {
+                await fetch(`/api/models/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'draft' }) });
+                setModel(prev => prev ? { ...prev, status: 'draft' } : prev);
+              }} className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-500 hover:bg-gray-50">
+                Avpublicera
               </button>
             )}
             <Link href={`/models/${id}/views/new`} className="flex items-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">
@@ -350,6 +384,17 @@ export default function ModelDetailPage() {
                 <div><span className="text-gray-500">Databastyp:</span> <span className="ml-2 font-medium">{model.sourceType}</span></div>
                 <div><span className="text-gray-500">Status:</span> <span className="ml-2 font-medium">{model.status}</span></div>
                 <div><span className="text-gray-500">Vyer:</span> <span className="ml-2 font-medium">{model.views.length}</span></div>
+              </div>
+            </div>
+            <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
+              <h3 className="font-semibold text-gray-900">Databasanslutning</h3>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div><span className="text-gray-500">Host:</span> <span className="ml-2 font-mono font-medium">{(model.sourceConfig as any)?.host}</span></div>
+                <div><span className="text-gray-500">Port:</span> <span className="ml-2 font-mono font-medium">{(model.sourceConfig as any)?.port}</span></div>
+                <div><span className="text-gray-500">Databas:</span> <span className="ml-2 font-mono font-medium">{(model.sourceConfig as any)?.database}</span></div>
+                <div><span className="text-gray-500">Användare:</span> <span className="ml-2 font-mono font-medium">{(model.sourceConfig as any)?.user}</span></div>
+                <div><span className="text-gray-500">SSL:</span> <span className="ml-2 font-medium">{(model.sourceConfig as any)?.ssl ? 'Ja' : 'Nej'}</span></div>
+                <div><span className="text-gray-500">Schema:</span> <span className="ml-2 font-mono font-medium">{(model.sourceConfig as any)?.schema ?? 'semantic_layer'}</span></div>
               </div>
             </div>
             <div className="bg-red-50 border border-red-200 rounded-xl p-6">

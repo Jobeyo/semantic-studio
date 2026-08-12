@@ -72,6 +72,12 @@ export default function EditViewPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ displayName, description, type, sql, columns }),
       });
+      // Sätt modellen tillbaka till draft så Publicera-knappen visas
+      await fetch(`/api/models/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'draft' }),
+      });
       router.push(`/models/${id}`);
     } catch {}
     setSaving(false);
