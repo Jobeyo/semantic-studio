@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",
+    "@node-rs/bcrypt": "^1.10.8",
     "@prisma/client": "^6.19.3",
     "@types/pg": "^8.20.0",
     "bcryptjs": "^3.0.3",

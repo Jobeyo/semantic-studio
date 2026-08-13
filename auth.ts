@@ -1,6 +1,6 @@
 import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
-import bcrypt from 'bcryptjs';
+import { verify } from '@node-rs/bcrypt';
 import prisma from '@/lib/db';
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
@@ -18,7 +18,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           });
           console.log('Auth: user found:', !!user, 'email:', credentials.email);
           if (!user) return null;
-          const match = await bcrypt.compare(credentials.password as string, user.passwordHash);
+          const match = await verify(credentials.password as string, user.passwordHash);
           console.log('Auth: password match:', match);
           if (!match) return null;
           return {
