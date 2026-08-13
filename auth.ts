@@ -16,8 +16,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             where: { email: (credentials.email as string).toLowerCase() },
             include: { org: true },
           });
+          console.log('Auth: user found:', !!user, 'email:', credentials.email);
           if (!user) return null;
           const match = await bcrypt.compare(credentials.password as string, user.passwordHash);
+          console.log('Auth: password match:', match);
           if (!match) return null;
           return {
             id: user.id.toString(),
