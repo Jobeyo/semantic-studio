@@ -15,6 +15,11 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV DATABASE_URL="postgresql://postgres:dummy@localhost:5432/studiorepro"
 RUN npx prisma generate
 RUN npm run build
+# Kopiera node_modules för runtime-beroenden
+RUN cp -r node_modules/.prisma .next/standalone/node_modules/ 2>/dev/null || true
+RUN cp -r node_modules/@prisma .next/standalone/node_modules/ 2>/dev/null || true
+RUN cp -r node_modules/@node-rs .next/standalone/node_modules/ 2>/dev/null || true
+RUN cp -r node_modules/bcryptjs .next/standalone/node_modules/ 2>/dev/null || true
 
 FROM base AS runner
 WORKDIR /app
@@ -26,8 +31,6 @@ RUN adduser --system --uid 1001 nextjs
 COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-# Kopiera bcryptjs explicit
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/bcryptjs ./node_modules/bcryptjs
 USER nextjs
 EXPOSE 3001
 ENV PORT=3001
