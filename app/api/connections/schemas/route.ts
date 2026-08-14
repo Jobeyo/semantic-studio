@@ -3,6 +3,11 @@ import { auth } from '@/auth';
 import { Client } from 'pg';
 
 async function getClient(body: any) {
+  // Lokal dev-fallback: pg_lake -> extern adress
+  if (process.env.NODE_ENV !== 'production' && body.host === 'pg_lake') {
+    body.host = '188.240.222.70';
+    body.port = 55432;
+  }
   const client = new Client({
     host: body.host, port: body.port, database: body.database,
     user: body.user, password: body.password,
