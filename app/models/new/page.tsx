@@ -99,8 +99,9 @@ export default function NewModelPage() {
 
   async function testTargetConnection() {
     setTesting(true); setTestResult(null);
+    const selectedConn = existingConns.find(c => c.host === host && c.database === database);
     try {
-      const res = await fetch('/api/connections/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sourceType, host, port: parseInt(port), database, user, password, ssl }) });
+      const res = await fetch('/api/connections/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sourceType, host, port: parseInt(port), database, user, password, ssl, modelId: selectedConn?.modelId }) });
       const data = await res.json();
       setTestResult({ ok: data.ok, message: data.ok ? `Ansluten! ${data.version ?? ''}` : data.error });
     } catch { setTestResult({ ok: false, message: 'Anslutning misslyckades' }); }
