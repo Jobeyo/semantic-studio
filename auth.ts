@@ -4,6 +4,11 @@ import { verify } from '@node-rs/bcrypt';
 import prisma from '@/lib/db';
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  cookies: {
+    sessionToken: {
+      name: 'studio-auth.session-token',
+    },
+  },
   providers: [
     Credentials({
       credentials: {
