@@ -140,10 +140,16 @@ Svara på svenska.`;
         const session = await auth();
         const user = await prisma.user.findUnique({ where: { email: session?.user?.email! } });
         const activeProvider = await prisma.lLMProvider.findFirst({
-          where: { orgId: user!.orgId, isDefault: true, type: 'claude' },
+          where: { orgId: user!.orgId, isDefault: true },
         });
+        const providerType = activeProvider?.type ?? 'claude';
         const apiKey = activeProvider?.apiKey || process.env.ANTHROPIC_API_KEY || '';
-        const anthropic = new Anthropic({ apiKey });
+        const providerConfig = activeProvider?.config as any;
+        const modelName = providerConfig?.model ?? (providerType === 'claude' ? 'claude-sonnet-4-6' : providerType === 'berget' ? 'Llama-3.3-70B-Instruct' : 'gpt-4o');
+        const anthropic = new Anthropic({ 
+          apiKey,
+          ...(providerType === 'berget' ? { baseURL: 'https://api.berget.ai/v1' } : {}),
+        });
         const messages: Anthropic.MessageParam[] = [
           ...history.map((h: any) => ({ role: h.role as 'user' | 'assistant', content: h.content })),
           { role: 'user', content: message },

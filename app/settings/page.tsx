@@ -365,6 +365,7 @@ export default function SettingsPage() {
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                         <option value="claude">Anthropic Claude</option>
                         <option value="openai">OpenAI GPT</option>
+                      <option value="berget">Berget.ai</option>
                         <option value="ollama">Ollama (Lokal)</option>
                       </select>
                     </div>
@@ -383,9 +384,32 @@ export default function SettingsPage() {
                     )}
                     <div className="col-span-2">
                       <label className="block text-xs font-medium text-gray-600 mb-1">Modell</label>
-                      <input value={newProviderModel} onChange={e => setNewProviderModel(e.target.value)}
-                        placeholder={newProviderType === 'claude' ? 'claude-sonnet-4-6' : newProviderType === 'openai' ? 'gpt-4o' : 'llama3'}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                      {newProviderType === 'claude' ? (
+                        <select value={newProviderModel} onChange={e => setNewProviderModel(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                          <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
+                          <option value="claude-opus-4-6">Claude Opus 4.6</option>
+                          <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
+                        </select>
+                      ) : newProviderType === 'berget' ? (
+                        <select value={newProviderModel} onChange={e => setNewProviderModel(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                          <option value="Kimi-K3">Kimi-K3</option>
+                          <option value="Llama-3.3-70B-Instruct">Llama 3.3 70B</option>
+                          <option value="GLM-5.2">GLM 5.2</option>
+                        </select>
+                      ) : newProviderType === 'openai' ? (
+                        <select value={newProviderModel} onChange={e => setNewProviderModel(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                          <option value="gpt-4o">GPT-4o</option>
+                          <option value="gpt-4o-mini">GPT-4o Mini</option>
+                          <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                        </select>
+                      ) : (
+                        <input value={newProviderModel} onChange={e => setNewProviderModel(e.target.value)}
+                          placeholder="llama3"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                      )}
                     </div>
                   </div>
                   {addProviderError && <p className="text-sm text-red-600">{addProviderError}</p>}
@@ -415,7 +439,7 @@ export default function SettingsPage() {
                           <span className="font-medium text-sm text-gray-900">{p.name}</span>
                           {p.isDefault && <span className="text-xs bg-green-50 text-green-700 border border-green-200 px-1.5 py-0.5 rounded">Aktiv</span>}
                         </div>
-                        <span className="text-xs text-gray-400">{p.type === 'claude' ? 'Anthropic Claude' : p.type === 'openai' ? 'OpenAI GPT' : 'Ollama Lokal'}</span>
+                        <span className="text-xs text-gray-400">{p.type === 'claude' ? 'Anthropic Claude' : p.type === 'openai' ? 'OpenAI GPT' : p.type === 'berget' ? 'Berget.ai' : 'Ollama Lokal'}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         {llmTestStatus[p.id] === 'ok' && <CheckCircle className="w-4 h-4 text-green-500" />}
@@ -429,7 +453,7 @@ export default function SettingsPage() {
                           <RefreshCw className="w-4 h-4" />
                         </button>
                         {p.type !== 'ollama' && (
-                          <a href={p.type === 'claude' ? 'https://console.anthropic.com/settings/billing' : 'https://platform.openai.com/account/billing'}
+                          <a href={p.type === 'claude' ? 'https://console.anthropic.com/settings/billing' : p.type === 'berget' ? 'https://dashboard.berget.ai' : 'https://platform.openai.com/account/billing'}
                             target="_blank" rel="noopener noreferrer"
                             className="text-xs px-2 py-1 rounded border border-gray-200 text-gray-500 hover:bg-gray-50">
                             💳
@@ -496,6 +520,21 @@ export default function SettingsPage() {
                   <option value="gpt-4o">GPT-4o</option>
                   <option value="gpt-4o-mini">GPT-4o Mini</option>
                   <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                </select>
+              </div>
+            )}
+            {editingLLM.type === 'berget' && (
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Modell</label>
+                <select value={editingLLM.model} onChange={e => setEditingLLM({...editingLLM, model: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                  <option value="moonshotai/Kimi-K3">Kimi-K3</option>
+                  <option value="moonshotai/Kimi-K2.6">Kimi-K2.6</option>
+                  <option value="meta-llama/Llama-3.3-70B-Instruct">Llama 3.3 70B</option>
+                  <option value="mistralai/Mistral-Small-3.2-24B-Instruct-2506">Mistral Small 3.2</option>
+                  <option value="mistralai/Mistral-Medium-3.5-128B">Mistral Medium 3.5</option>
+                  <option value="zai-org/GLM-5.2">GLM 5.2</option>
+                  <option value="openai/gpt-oss-120b">GPT OSS 120B</option>
                 </select>
               </div>
             )}

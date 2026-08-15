@@ -16,6 +16,13 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
       await client.messages.create({ model: 'claude-haiku-4-5-20251001', max_tokens: 10, messages: [{ role: 'user', content: 'Hi' }] });
       return Response.json({ ok: true });
     }
+    if (provider.type === 'openai' || provider.type === 'berget') {
+      const baseURL = provider.type === 'berget' ? 'https://api.berget.ai/v1' : 'https://api.openai.com/v1';
+      const res = await fetch(`${baseURL}/models`, {
+        headers: { 'Authorization': `Bearer ${provider.apiKey}` },
+      });
+      return Response.json({ ok: res.ok });
+    }
     if (provider.type === 'ollama') {
       const config = provider.config as any;
       const url = config?.url ?? 'http://ollama:11434';
