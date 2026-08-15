@@ -53,7 +53,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const dbSchema = await getDbSchema(model.sourceType, sourceDb, sourceSchema);
     console.log('DB schema length:', dbSchema.length);
 
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    // Hämta aktiv LLM-leverantör
+    const sessionData = await auth();
+    const user = await prisma.user.findUnique({ where: { email: sessionData?.user?.email! } });
+    const activeProvider = await prisma.lLMProvider.findFirst({
+      where: { orgId: user!.orgId, isDefault: true, type: 'claude' },
+    });
+    const apiKey = activeProvider?.apiKey || process.env.ANTHROPIC_API_KEY || '';
+    const anthropic = new Anthropic({ apiKey });
     const msg = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 8000,

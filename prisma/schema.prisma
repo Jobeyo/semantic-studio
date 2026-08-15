@@ -13,6 +13,7 @@ model Organization {
   createdAt DateTime @default(now())
   users     User[]
   models    SemanticModel[]
+  llmProviders LLMProvider[]
 }
 
 model User {
@@ -90,4 +91,16 @@ model Changelog {
   action    String        // created, updated, published, deleted
   details   String?
   createdAt DateTime      @default(now())
+}
+
+model LLMProvider {
+  id        Int      @id @default(autoincrement())
+  name      String
+  type      String   // claude, openai, ollama
+  apiKey    String   @default("")
+  config    Json     @default("{}")
+  isDefault Boolean  @default(false)
+  orgId     Int
+  org       Organization @relation(fields: [orgId], references: [id])
+  createdAt DateTime @default(now())
 }

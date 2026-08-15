@@ -136,7 +136,14 @@ Svara på svenska.`;
       const send = (data: object) => controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
 
       try {
-        const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+        // Hämta aktiv LLM-leverantör
+        const session = await auth();
+        const user = await prisma.user.findUnique({ where: { email: session?.user?.email! } });
+        const activeProvider = await prisma.lLMProvider.findFirst({
+          where: { orgId: user!.orgId, isDefault: true, type: 'claude' },
+        });
+        const apiKey = activeProvider?.apiKey || process.env.ANTHROPIC_API_KEY || '';
+        const anthropic = new Anthropic({ apiKey });
         const messages: Anthropic.MessageParam[] = [
           ...history.map((h: any) => ({ role: h.role as 'user' | 'assistant', content: h.content })),
           { role: 'user', content: message },
