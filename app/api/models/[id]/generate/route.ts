@@ -14,19 +14,48 @@ async function getDbSchema(sourceType: string, config: any, sourceSchema: string
     });
     await client.connect();
     try {
+      // Hämta kolumner med nullable-info
       const res = await client.query(`
         SELECT table_name, column_name, data_type, is_nullable
         FROM information_schema.columns
         WHERE table_schema = $1
         ORDER BY table_name, ordinal_position
       `, [sourceSchema]);
-      await client.end();
+
       const tables: Record<string, string[]> = {};
       for (const row of res.rows) {
         if (!tables[row.table_name]) tables[row.table_name] = [];
-        tables[row.table_name].push(`  ${row.column_name} (${row.data_type})`);
+        const nullable = row.is_nullable === 'YES' ? ' [kan vara NULL]' : ' [ej NULL]';
+        tables[row.table_name].push(`  ${row.column_name} (${row.data_type})${nullable}`);
       }
-      return Object.entries(tables).map(([t, cols]) => `${sourceSchema}.${t}:\n${cols.join('\n')}`).join('\n\n');
+
+      // Hämta sample-data och NULL-statistik per tabell
+      let out = '';
+      for (const [tableName, cols] of Object.entries(tables)) {
+        out += `${sourceSchema}.${tableName}:\n${cols.join('\n')}\n`;
+        try {
+          // Räkna rader och NULL per kolumn
+          const colNames = cols.map(c => c.trim().split(' ')[0]);
+          const nullChecks = colNames.map(c => `SUM(CASE WHEN "${c}" IS NULL THEN 1 ELSE 0 END) AS "${c}_nulls"`).join(', ');
+          const statsRes = await client.query(`SELECT COUNT(*) as total, ${nullChecks} FROM "${sourceSchema}"."${tableName}" LIMIT 1`);
+          const stats = statsRes.rows[0];
+          const total = parseInt(stats.total);
+          out += `  → ${total} rader totalt\n`;
+          for (const col of colNames) {
+            const nullCount = parseInt(stats[`${col}_nulls`] ?? 0);
+            if (nullCount > 0) {
+              out += `  → VARNING: ${col} har ${nullCount} NULL-värden (${Math.round(nullCount/total*100)}%)\n`;
+            }
+          }
+          // Visa exempel-värden för potentiella nycklar
+          const sampleRes = await client.query(`SELECT * FROM "${sourceSchema}"."${tableName}" LIMIT 3`);
+          if (sampleRes.rows.length > 0) {
+            out += `  → Exempel: ${JSON.stringify(sampleRes.rows[0])}\n`;
+          }
+        } catch {}
+        out += '\n';
+      }
+      return out;
     } finally {
       try { await client.end(); } catch {}
     }
