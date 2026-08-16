@@ -17,6 +17,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (!view) return Response.json({ error: 'View not found' }, { status: 404 });
 
     const config = model.sourceConfig as any;
+    // Lokal dev-fallback
+    if (process.env.NODE_ENV !== 'production' && config.host === 'pg_lake') {
+      config.host = '188.240.222.70';
+      config.port = 55432;
+    }
     const client = new Client({
       host: config.host, port: config.port, database: config.database,
       user: config.user, password: config.password,
@@ -26,11 +31,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     await client.connect();
 
     try {
-      // Säkerställ att semantic_layer schema finns
-      await client.query('CREATE SCHEMA IF NOT EXISTS semantic_layer');
+      // Säkerställ att schemat finns
+      const schema = (model.sourceConfig as any)?.schema ?? 'semantic_layer';
+      await client.query(`CREATE SCHEMA IF NOT EXISTS "${schema}"`);
       let sqlToRun = view.sql;
       if (!sqlToRun.trim().toUpperCase().startsWith('CREATE')) {
-        sqlToRun = `CREATE OR REPLACE VIEW semantic_layer."${view.name}" AS\n${sqlToRun}`;
+        sqlToRun = `CREATE OR REPLACE VIEW ${schema}."${view.name}" AS\n${sqlToRun}`;
       }
       await client.query(sqlToRun);
       await client.end();

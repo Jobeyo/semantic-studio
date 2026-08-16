@@ -16,18 +16,22 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
     if (!model) return Response.json({ error: 'Not found' }, { status: 404 });
 
     const config = model.sourceConfig as any;
+    // Lokal dev-fallback
+    const host = process.env.NODE_ENV !== 'production' && config.host === 'pg_lake' ? '188.240.222.70' : config.host;
+    const port = process.env.NODE_ENV !== 'production' && config.host === 'pg_lake' ? 55432 : config.port;
     const client = new Client({
-      host: config.host, port: config.port, database: config.database,
+      host, port, database: config.database,
       user: config.user, password: config.password,
       ssl: config.ssl ? { rejectUnauthorized: false } : undefined,
       connectionTimeoutMillis: 8000,
     });
     await client.connect();
 
+    const schema = config.schema ?? 'semantic_layer';
     const res = await client.query(`
       SELECT table_name FROM information_schema.views
-      WHERE table_schema = 'semantic_layer'
-    `);
+      WHERE table_schema = $1
+    `, [schema]);
     await client.end();
 
     const dbViews = res.rows.map((r: any) => r.table_name);
