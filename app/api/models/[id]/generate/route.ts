@@ -57,6 +57,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     console.log('Source DB config:', { host: sourceDb.host, port: sourceDb.port, database: sourceDb.database, user: sourceDb.user });
     const dbSchema = await getDbSchema(model.sourceType, sourceDb, sourceSchema);
     console.log('DB schema length:', dbSchema.length);
+    console.log('DB schema preview:', dbSchema.slice(0, 1000));
+    // Begränsa schema om det är för långt
+    const truncatedSchema = dbSchema.length > 8000 ? dbSchema.slice(0, 8000) + '\n... (schema trunkerat)' : dbSchema;
 
     // Hämta aktiv LLM-leverantör
     const sessionData = await auth();
@@ -68,7 +71,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const anthropic = new Anthropic({ apiKey });
     const msg = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 8000,
+      max_tokens: 16000,
       messages: [{
         role: 'user',
         content: `Du är en expert på semantiska datamodeller och Business Intelligence.
@@ -76,13 +79,28 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 Analysera följande databasschema och skapa ett semantiskt lager med vyer i schemat "${targetSchema}".
 
 # Databasschema (källschema: ${sourceSchema})
-${dbSchema}
+${truncatedSchema}
 
 REGLER:
 1. SQL ska referera EXAKT till tabellerna i källschemat ovan med schema-prefix: ${sourceSchema}.table_name
 2. Vyer ska skapas i målschemat: ${targetSchema}
 3. Använd svenska affärsnamn i displayName
 4. Identifiera fakta-, dimensions- och måttvyer
+
+KRITISKA REGLER FÖR JOIN-NYCKLAR:
+5. Använd BARA kolumner som faktiskt finns i källtabellerna - hitta INTE på kolumnnamn
+6. JOIN-nycklar måste vara kolumner som faktiskt finns i BÅDA tabellerna du joinar
+7. Kontrollera att alla kolumnnamn i SELECT och JOIN-villkor existerar i källschemat ovan
+8. Om en naturlig JOIN-nyckel inte finns, skapa INTE en konstgjord nyckel - gör istället separata vyer
+9. Faktavyer ska innehålla alla mätbara värden och alla naturliga nycklar från källtabellen
+10. Dimensionsvyer ska bara innehålla kolumner som faktiskt finns i källtabellen
+
+SQL-KVALITET:
+11. Testa mentalt att varje JOIN faktiskt kan producera rader - inte bara NULL
+12. Använd hellre enkla vyer utan JOIN än komplexa vyer med felaktiga JOINs
+13. Namnge vyer och kolumner konsekvent - samma begrepp ska ha samma namn överallt
+14. Håll JSON-svaret kompakt - max 8 vyer, max 15 kolumner per vy
+14. Håll JSON-svaret kompakt - max 8 vyer, max 15 kolumner per vy
 
 Returnera EXAKT följande JSON-format utan kommentarer:
 {

@@ -13,6 +13,11 @@ export async function GET(_: NextRequest, { params }: { params: Promise<{ id: st
     if (!model) return Response.json({ error: 'Not found' }, { status: 404 });
 
     const config = model.sourceConfig as any;
+    // Lokal dev-fallback
+    if (process.env.NODE_ENV !== 'production' && config.host === 'pg_lake') {
+      config.host = '188.240.222.70';
+      config.port = 55432;
+    }
     const client = new Client({
       host: config.host, port: config.port, database: config.database,
       user: config.user, password: config.password,

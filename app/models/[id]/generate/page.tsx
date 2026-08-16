@@ -275,15 +275,13 @@ export default function GeneratePage() {
                   <Loader2 className="w-4 h-4 animate-spin" /> Hämtar scheman...
                 </div>
               ) : (
-                <div className="space-y-2">
+                <select value={selectedSourceSchema} onChange={e => setSelectedSourceSchema(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                  <option value="">-- Välj källschema --</option>
                   {sourceSchemas.filter(s => !['pg_catalog', 'information_schema', 'pg_toast'].includes(s)).map(s => (
-                    <button key={s} onClick={() => setSelectedSourceSchema(s)}
-                      className={`w-full text-left px-4 py-3 rounded-lg border transition-colors font-mono text-sm ${selectedSourceSchema === s ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'border-gray-200 hover:bg-gray-50'}`}>
-                      {s}
-                      {selectedSourceSchema === s && <CheckCircle className="w-4 h-4 inline ml-2 text-indigo-600" />}
-                    </button>
+                    <option key={s} value={s}>{s}</option>
                   ))}
-                </div>
+                </select>
               )}
 
               <div className="flex justify-between pt-2">
