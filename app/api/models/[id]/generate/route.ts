@@ -100,6 +100,11 @@ SQL-KVALITET:
 12. Använd hellre enkla vyer utan JOIN än komplexa vyer med felaktiga JOINs
 13. Namnge vyer och kolumner konsekvent - samma begrepp ska ha samma namn överallt
 14. Håll JSON-svaret kompakt - max 8 vyer, max 15 kolumner per vy
+15. SURROGATNYCKLAR: Om en tabell saknar en tydlig primärnyckel, använd en befintlig unik kolumn eller md5()-hash av kombination av kolumner
+16. NULL-HANTERING: Om en JOIN-nyckel kan vara NULL i faktatabellen, lägg till WHERE-villkor för att filtrera bort NULL-rader ELLER uteslut dimensionen helt
+17. STAR SCHEMA: Faktatabellen ska ha direkta kopplingar till dimensioner via nycklar som FAKTISKT finns i källdata
+18. TESTA NYCKLAR: Innan du skapar en JOIN, verifiera mentalt att båda tabellerna har en gemensam kolumn med matchande värden
+19. UTESLUT DIMENSION: Om ingen naturlig koppling finns mellan fakta och dimension, skapa dimensionen som en fristående vy utan JOIN mot faktatabellen
 14. Håll JSON-svaret kompakt - max 8 vyer, max 15 kolumner per vy
 
 Returnera EXAKT följande JSON-format utan kommentarer:
