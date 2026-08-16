@@ -62,6 +62,9 @@ export default function ModelDetailPage() {
   const [showSqlReview, setShowSqlReview] = useState(false);
   const [importing, setImporting] = useState(false);
   const [syncStatus, setSyncStatus] = useState<Record<number, boolean>>({});
+  const [editingName, setEditingName] = useState(false);
+  const [newModelName, setNewModelName] = useState('');
+  const [savingName, setSavingName] = useState(false);
   const [executingSql, setExecutingSql] = useState<number | null>(null);
   const [sqlPreview, setSqlPreview] = useState<{viewId: number; name: string; sql: string} | null>(null);
   const [showChat, setShowChat] = useState(false);
@@ -242,6 +245,23 @@ export default function ModelDetailPage() {
     // Sätt status till published
     await fetch(`/api/models/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'published' }) });
     setModel(prev => prev ? { ...prev, status: 'published' } : prev);
+  }
+
+  async function saveModelName() {
+    if (!newModelName.trim()) return;
+    setSavingName(true);
+    try {
+      const res = await fetch(`/api/models/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newModelName.trim() }),
+      });
+      if (res.ok) {
+        setModel(prev => prev ? { ...prev, name: newModelName.trim() } : prev);
+        setEditingName(false);
+      }
+    } catch {}
+    setSavingName(false);
   }
 
   async function deleteModel() {
@@ -429,10 +449,39 @@ export default function ModelDetailPage() {
           <div className="max-w-2xl space-y-4">
             <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
               <h3 className="font-semibold text-gray-900">Modellinformation</h3>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div><span className="text-gray-500">Databastyp:</span> <span className="ml-2 font-medium">{model.sourceType}</span></div>
-                <div><span className="text-gray-500">Status:</span> <span className="ml-2 font-medium">{model.status}</span></div>
-                <div><span className="text-gray-500">Vyer:</span> <span className="ml-2 font-medium">{model.views.length}</span></div>
+              <div className="space-y-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-500">Modellnamn:</span>
+                  {editingName ? (
+                    <div className="flex items-center gap-2">
+                      <input value={newModelName} onChange={e => setNewModelName(e.target.value)}
+                        className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                      <button onClick={saveModelName} disabled={savingName}
+                        className="flex items-center gap-1 px-3 py-1 bg-indigo-600 text-white rounded text-xs font-medium hover:bg-indigo-700 disabled:opacity-50">
+                        {savingName && <Loader2 className="w-3 h-3 animate-spin" />} Spara
+                      </button>
+                      <button onClick={() => setEditingName(false)} className="px-3 py-1 border border-gray-300 rounded text-xs hover:bg-gray-50">Avbryt</button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{model.name}</span>
+                      <button onClick={() => { setNewModelName(model.name); setEditingName(true); }}
+                        className="text-xs text-indigo-600 hover:text-indigo-700">Ändra</button>
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-500">Databastyp:</span>
+                  <span className="font-medium">{model.sourceType}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-500">Status:</span>
+                  <span className="font-medium">{model.status}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-500">Vyer:</span>
+                  <span className="font-medium">{model.views.length}</span>
+                </div>
               </div>
             </div>
             <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">

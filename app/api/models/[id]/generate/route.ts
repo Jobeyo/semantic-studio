@@ -49,6 +49,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const config = model.sourceConfig as any;
     // Använd källdatabas om angiven, annars modellens anslutning
     const sourceDb = body.sourceDb ?? config;
+    // Lokal dev-fallback: pg_lake -> extern adress
+    if (process.env.NODE_ENV !== 'production' && sourceDb.host === 'pg_lake') {
+      sourceDb.host = '188.240.222.70';
+      sourceDb.port = 55432;
+    }
     console.log('Source DB config:', { host: sourceDb.host, port: sourceDb.port, database: sourceDb.database, user: sourceDb.user });
     const dbSchema = await getDbSchema(model.sourceType, sourceDb, sourceSchema);
     console.log('DB schema length:', dbSchema.length);
