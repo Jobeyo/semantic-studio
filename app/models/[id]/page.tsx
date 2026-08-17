@@ -1,7 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Plus, Table, Sparkles, CheckCircle, Loader2, Edit2, ChevronDown, ChevronRight, Trash2, MessageSquare, X, Send } from 'lucide-react';
+import ERDiagram from '@/components/ERDiagram';
+import { ArrowLeft, GitBranch, Plus, Table, Sparkles, CheckCircle, Loader2, Edit2, ChevronDown, ChevronRight, Trash2, MessageSquare, X, Send } from 'lucide-react';
 import { useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import Link from 'next/link';
@@ -72,7 +73,7 @@ export default function ModelDetailPage() {
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const chatBottomRef = useRef<HTMLDivElement>(null);
-  const [activeTab, setActiveTab] = useState<'views' | 'sql' | 'settings'>('views');
+  const [activeTab, setActiveTab] = useState<'views' | 'sql' | 'settings' | 'er'>('views');
 
   useEffect(() => {
     fetch(`/api/models/${id}`).then(r => r.json()).then(data => { setModel(data); setLoading(false); }).catch(() => setLoading(false));
@@ -332,10 +333,10 @@ export default function ModelDetailPage() {
           </div>
         </div>
         <div className="flex gap-1">
-          {(['views', 'sql', 'settings'] as const).map(tab => (
+          {(['views', 'sql', 'er', 'settings'] as const).map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
               className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${activeTab === tab ? 'bg-indigo-50 text-indigo-600' : 'text-gray-500 hover:text-gray-700'}`}>
-              {tab === 'views' ? `Vyer (${model.views.length})` : tab === 'sql' ? 'SQL-preview' : 'Inställningar'}
+              {tab === 'views' ? `Vyer (${model.views.length})` : tab === 'sql' ? 'SQL-preview' : tab === 'er' ? 'ER-diagram' : 'Inställningar'}
             </button>
           ))}
         </div>
@@ -442,6 +443,12 @@ export default function ModelDetailPage() {
                 </pre>
               </div>
             ))}
+          </div>
+        )}
+
+        {activeTab === 'er' && (
+          <div className="h-full p-4">
+            <ERDiagram views={model.views} modelId={model.id} />
           </div>
         )}
 
