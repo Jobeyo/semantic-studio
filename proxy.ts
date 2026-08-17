@@ -7,7 +7,8 @@ export default auth((req) => {
   const isSetupPage = req.nextUrl.pathname === '/setup';
   const isApiAuth = req.nextUrl.pathname.startsWith('/api/auth');
   const isApiSetup = req.nextUrl.pathname.startsWith('/api/setup');
-  if (isApiAuth || isApiSetup) return NextResponse.next();
+  const isApiGlossary = req.nextUrl.pathname.startsWith('/api/glossary');
+  if (isApiAuth || isApiSetup || isApiGlossary) return NextResponse.next();
   if (isSetupPage) return NextResponse.next();
   if (!isLoggedIn && !isLoginPage) return NextResponse.redirect(new URL('/login', req.url));
   if (isLoggedIn && isLoginPage) return NextResponse.redirect(new URL('/', req.url));
