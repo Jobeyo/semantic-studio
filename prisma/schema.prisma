@@ -15,6 +15,7 @@ model Organization {
   models        SemanticModel[]
   llmProviders  LLMProvider[]
   glossaryTerms GlossaryTerm[]
+  changeLogs    ChangeLog[]
 }
 
 model User {
@@ -27,6 +28,7 @@ model User {
   org          Organization @relation(fields: [orgId], references: [id])
   createdAt    DateTime     @default(now())
   changelogs   Changelog[]
+  changeLogs   ChangeLog[]
 }
 
 model SemanticModel {
@@ -44,6 +46,7 @@ model SemanticModel {
   versions      ModelVersion[]
   changelogs    Changelog[]
   glossaryTerms GlossaryTerm[]
+  changeLogs    ChangeLog[]
 }
 
 model ModelView {
@@ -105,6 +108,22 @@ model LLMProvider {
   orgId     Int
   org       Organization @relation(fields: [orgId], references: [id])
   createdAt DateTime     @default(now())
+}
+
+model ChangeLog {
+  id         Int            @id @default(autoincrement())
+  orgId      Int
+  org        Organization   @relation(fields: [orgId], references: [id])
+  modelId    Int?
+  model      SemanticModel? @relation(fields: [modelId], references: [id])
+  userId     Int?
+  user       User?          @relation(fields: [userId], references: [id])
+  action     String // published, unpublished, generated, view_created, view_updated, glossary_added, model_created, model_deleted
+  entityType String // model, view, glossary, user
+  entityName String?
+  details    String?
+  actor      String // email or 'AI'
+  createdAt  DateTime       @default(now())
 }
 
 model GlossaryTerm {

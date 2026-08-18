@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { auth } from '@/auth';
 import prisma from '@/lib/db';
+import { logChange } from '@/lib/changelog';
 import { Client } from 'pg';
 import Anthropic from '@anthropic-ai/sdk';
 
@@ -179,6 +180,12 @@ Returnera EXAKT följande JSON-format utan kommentarer:
       return Response.json({ error: 'AI genererade för mycket data. Försök med ett schema med färre tabeller.' }, { status: 500 });
     }
     // Returnera vyer utan att spara – användaren granskar SQL först
+    await logChange({
+      orgId: model.orgId, modelId: model.id,
+      action: 'ai_generated', entityType: 'model', entityName: model.name,
+      details: `AI genererade ${generated.views.length} vyer från ${sourceSchema}`,
+      actor: 'AI',
+    });
     return Response.json({ views: generated.views });
 
   } catch (e) {

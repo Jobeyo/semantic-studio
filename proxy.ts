@@ -8,7 +8,8 @@ export default auth((req) => {
   const isApiAuth = req.nextUrl.pathname.startsWith('/api/auth');
   const isApiSetup = req.nextUrl.pathname.startsWith('/api/setup');
   const isApiGlossary = req.nextUrl.pathname.startsWith('/api/glossary');
-  if (isApiAuth || isApiSetup || isApiGlossary) return NextResponse.next();
+  const isInternalModels = req.nextUrl.pathname.startsWith('/api/models') && req.headers.get('x-internal-request') === 'true';
+  if (isApiAuth || isApiSetup || isApiGlossary || isInternalModels) return NextResponse.next();
   if (isSetupPage) return NextResponse.next();
   if (!isLoggedIn && !isLoginPage) return NextResponse.redirect(new URL('/login', req.url));
   if (isLoggedIn && isLoginPage) return NextResponse.redirect(new URL('/', req.url));

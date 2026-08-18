@@ -14,7 +14,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     { href: '/', label: 'Översikt', icon: Home },
     { href: '/models', label: 'Modeller', icon: Database },
     { href: '/glossary', label: 'Glossary', icon: BookOpen },
-    { href: '/history', label: 'Ändringslogg', icon: History },
+    { href: '/changelog', label: 'Ändringslogg', icon: History },
     { href: '/connections', label: 'Anslutningar', icon: GitBranch },
     { href: '/settings', label: 'Inställningar', icon: Settings },
   ];

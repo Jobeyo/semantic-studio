@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { auth } from '@/auth';
 import prisma from '@/lib/db';
+import { logChange } from '@/lib/changelog';
 import { Client } from 'pg';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -40,6 +41,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       }
       await client.query(sqlToRun);
       await client.end();
+      console.log('Logging change for view:', view.name, 'model:', model.id, 'org:', model.orgId);
+      await logChange({
+        orgId: model.orgId,
+        modelId: model.id,
+        action: 'view_published',
+        entityType: 'view',
+        entityName: view.name,
+        details: `Vy "${view.name}" publicerades i schema ${schema}`,
+        actor: session.user?.email ?? 'unknown',
+      });
       return Response.json({ success: true });
     } catch (e) {
       await client.end();
