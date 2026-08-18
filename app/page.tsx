@@ -11,7 +11,7 @@ export default function DashboardPage() {
     { title: 'Modeller', description: 'Skapa och hantera semantiska modeller', href: '/models', icon: Database, color: 'bg-indigo-50 text-indigo-600' },
     { title: 'Anslutningar', description: 'Konfigurera databaskopplingar', href: '/connections', icon: GitBranch, color: 'bg-blue-50 text-blue-600' },
     { title: 'Glossary', description: 'Affärstermer och definitioner', href: '/glossary', icon: BookOpen, color: 'bg-green-50 text-green-600' },
-    { title: 'Ändringslogg', description: 'Se vad som ändrats och av vem', href: '/history', icon: History, color: 'bg-amber-50 text-amber-600' },
+    { title: 'Ändringslogg', description: 'Se vad som ändrats och av vem', href: '/changelog', icon: History, color: 'bg-amber-50 text-amber-600' },
   ];
 
   return (
