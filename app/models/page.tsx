@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { usePageHeader } from '@/contexts/PageHeaderContext';
 import { Plus, Database, Clock, Loader2, ChevronRight, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -33,7 +34,9 @@ const sourceColors: Record<string, string> = {
 };
 
 export default function ModelsPage() {
+  const { setHeader } = usePageHeader();
   const [models, setModels] = useState<Model[]>([]);
+  useEffect(() => { setHeader('Semantiska modeller', `${models.length} modell${models.length !== 1 ? 'er' : ''}`); }, [models.length]);
   const [loading, setLoading] = useState(true);
 
   async function deleteModel(e: React.MouseEvent, modelId: number, modelName: string) {
@@ -50,16 +53,8 @@ export default function ModelsPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-8 py-5 border-b border-gray-200 bg-white flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold text-gray-900">Semantiska modeller</h1>
-          <p className="text-sm text-gray-500">{models.length} modell{models.length !== 1 ? 'er' : ''}</p>
-        </div>
-        <Link href="/models/new" className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">
-          <Plus className="w-4 h-4" /> Ny modell
-        </Link>
-      </div>
       <div className="flex-1 overflow-y-auto p-8">
+
         {loading ? (
           <div className="flex items-center justify-center h-full"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
         ) : models.length === 0 ? (
@@ -72,7 +67,9 @@ export default function ModelsPage() {
             </Link>
           </div>
         ) : (
-          <div className="space-y-3 max-w-4xl">
+          <>
+          <div className="flex gap-6 w-full">
+            <div className="flex-1 space-y-3">
             {models.map(model => {
               console.log('sourceType:', model.sourceType, 'color:', sourceColors[model.sourceType]);
               return (
@@ -107,7 +104,14 @@ export default function ModelsPage() {
               </Link>
             );
             })}
+            </div>
+            <div className="w-40 flex-shrink-0">
+              <Link href="/models/new" className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 w-full justify-center">
+                <Plus className="w-4 h-4" /> Ny modell
+              </Link>
+            </div>
           </div>
+          </>
         )}
       </div>
     </div>

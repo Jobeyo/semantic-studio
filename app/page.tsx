@@ -1,11 +1,22 @@
 'use client';
+import { useEffect, useState } from 'react';
+import { usePageHeader } from '@/contexts/PageHeaderContext';
 import { useSession } from 'next-auth/react';
 import { Database, GitBranch, BookOpen, History, Plus, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
 export default function DashboardPage() {
   const { data: session } = useSession();
-  const name = session?.user?.name?.split(' ')[0] ?? '';
+  const { setHeader } = usePageHeader();
+  const [modelCount, setModelCount] = useState<number>(0);
+  useEffect(() => {
+    fetch('/api/models').then(r => r.json()).then(m => setModelCount(Array.isArray(m) ? m.length : 0)).catch(() => {});
+  }, []);
+  const name = (session?.user as any)?.name?.split(' ')[0] ?? (session?.user?.email ?? '');
+  useEffect(() => {
+    console.log('setHeader called with name:', name);
+    setHeader('Semantic Studio', `Välkommen, ${name || 'Admin'}! · Din plats för att bygga och hantera semantiska modeller`);
+  }, [name]);
 
   const cards = [
     { title: 'Modeller', description: 'Skapa och hantera semantiska modeller', href: '/models', icon: Database, color: 'bg-indigo-50 text-indigo-600' },
@@ -16,10 +27,7 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-8 py-6 border-b border-gray-200 bg-white">
-        <h1 className="text-xl font-semibold text-gray-900">Välkommen{name ? `, ${name}` : ''}!</h1>
-        <p className="text-sm text-gray-500 mt-1">Semantic Studio – din plats för att bygga och hantera semantiska modeller</p>
-      </div>
+
       <div className="flex-1 overflow-y-auto p-8">
         <div className="grid grid-cols-2 gap-4 max-w-3xl">
           {cards.map(({ title, description, href, icon: Icon, color }) => (
@@ -39,8 +47,8 @@ export default function DashboardPage() {
         <div className="mt-8 max-w-3xl">
           <div className="bg-indigo-600 rounded-xl p-6 flex items-center justify-between">
             <div>
-              <h3 className="text-white font-semibold mb-1">Skapa din första modell</h3>
-              <p className="text-indigo-200 text-sm">Anslut till en databas och låt AI hjälpa dig bygga det semantiska lagret</p>
+              <h3 className="text-white font-semibold mb-1">{modelCount > 0 ? 'Skapa en modell' : 'Skapa din första modell'}</h3>
+              <p className="text-indigo-200 text-sm">Anslut till en datakälla och låt AI hjälpa dig bygga det semantiska lagret</p>
             </div>
             <Link href="/models/new"
               className="flex items-center gap-2 bg-white text-indigo-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-50 transition-colors flex-shrink-0">

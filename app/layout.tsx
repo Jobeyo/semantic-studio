@@ -3,6 +3,7 @@ import { Geist } from 'next/font/google';
 import './globals.css';
 import Providers from './providers';
 import { LanguageProvider } from '@/contexts/LanguageContext';
+import { PageHeaderProvider } from '@/contexts/PageHeaderContext';
 
 const geist = Geist({ subsets: ['latin'] });
 
@@ -16,7 +17,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="sv" className="h-full">
       <body className={`${geist.className} h-full bg-gray-50`}>
         <Providers>
-          <LanguageProvider>{children}</LanguageProvider>
+          <LanguageProvider>
+            <PageHeaderProvider>{children}</PageHeaderProvider>
+          </LanguageProvider>
         </Providers>
       </body>
     </html>

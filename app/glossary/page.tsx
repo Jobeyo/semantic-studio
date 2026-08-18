@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { usePageHeader } from '@/contexts/PageHeaderContext';
 import { BookOpen, Sparkles, Plus, Trash2, Edit2, Loader2, CheckCircle, X } from 'lucide-react';
 
 interface GlossaryTerm {
@@ -18,9 +19,11 @@ interface GlossaryTerm {
 interface Model { id: number; name: string; }
 
 export default function GlossaryPage() {
+  const { setHeader } = usePageHeader();
   const [terms, setTerms] = useState<GlossaryTerm[]>([]);
   const [models, setModels] = useState<Model[]>([]);
   const [loading, setLoading] = useState(true);
+  useEffect(() => { setHeader('Business Glossary', `${terms.length} termer definierade`); }, [terms.length]);
   const [generating, setGenerating] = useState(false);
   const [selectedModelId, setSelectedModelId] = useState<number | null>(null);
   const [search, setSearch] = useState('');
@@ -105,13 +108,18 @@ export default function GlossaryPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-8 py-5 border-b border-gray-200 bg-white flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold text-gray-900">Business Glossary</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{terms.length} termer definierade</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <select value={selectedModelId ?? ''} onChange={e => {
+      <div className="px-8 py-3 flex items-center gap-3">
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Sök term..."
+          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-48" />
+        <select value={filterType} onChange={e => setFilterType(e.target.value)}
+          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <option value="">Alla typer</option>
+          <option value="dimension">Dimension</option>
+          <option value="measure">Mått</option>
+          <option value="concept">Begrepp</option>
+        </select>
+        <div className="flex-1" />
+  <select value={selectedModelId ?? ''} onChange={e => {
             const id = e.target.value ? parseInt(e.target.value) : null;
             setSelectedModelId(id);
             loadTerms(id ?? undefined);
@@ -119,31 +127,19 @@ export default function GlossaryPage() {
             <option value="">Alla modeller</option>
             {models.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
-          <button onClick={generate} disabled={generating || !selectedModelId}
+  <button onClick={generate} disabled={generating || !selectedModelId}
             className="flex items-center gap-2 px-4 py-2 border border-indigo-200 text-indigo-600 rounded-lg text-sm hover:bg-indigo-50 disabled:opacity-50">
             {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
             Generera med AI
           </button>
-          <button onClick={() => { setShowAdd(true); setEditingId(null); setForm({ name: '', definition: '', synonym: '', dataSource: '', type: 'concept' }); }}
+  <button onClick={() => { setShowAdd(true); setEditingId(null); setForm({ name: '', definition: '', synonym: '', dataSource: '', type: 'concept' }); }}
             className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">
             <Plus className="w-4 h-4" /> Lägg till term
           </button>
-        </div>
-      </div>
+</div>
 
       <div className="flex-1 overflow-y-auto p-8">
-        {/* Filter */}
-        <div className="flex gap-3 mb-6">
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Sök term..."
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 max-w-sm" />
-          <select value={filterType} onChange={e => setFilterType(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            <option value="">Alla typer</option>
-            <option value="dimension">Dimension</option>
-            <option value="measure">Mått</option>
-            <option value="concept">Begrepp</option>
-          </select>
-        </div>
+
 
         {loading ? (
           <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>

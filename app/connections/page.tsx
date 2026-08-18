@@ -88,17 +88,7 @@ export default function ConnectionsPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-8 py-5 border-b border-gray-200 bg-white flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold text-gray-900">Anslutningar</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{connections.length} anslutning{connections.length !== 1 ? 'ar' : ''} från befintliga modeller</p>
-        </div>
-        <button onClick={testAll} disabled={loading || testing !== null}
-          className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50">
-          {testing !== null ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-          Testa alla
-        </button>
-      </div>
+      
 
       <div className="flex-1 overflow-y-auto p-8">
         {loading ? (

@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { usePageHeader } from '@/contexts/PageHeaderContext';
 import { Clock, Database, Sparkles, FileText, BookOpen, User, Filter } from 'lucide-react';
 
 interface ChangeLog {
@@ -43,8 +44,10 @@ function groupByDate(logs: ChangeLog[]) {
 }
 
 export default function ChangeLogPage() {
+  const { setHeader } = usePageHeader();
   const [logs, setLogs] = useState<ChangeLog[]>([]);
   const [loading, setLoading] = useState(true);
+  useEffect(() => { setHeader('Ändringslogg', `${logs.length} händelser`); }, [logs.length]);
   const [filterAction, setFilterAction] = useState('');
   const [filterActor, setFilterActor] = useState('');
 
@@ -65,28 +68,22 @@ export default function ChangeLogPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-8 py-5 border-b border-gray-200 bg-white flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold text-gray-900">Ändringslogg</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{filtered.length} händelser</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Filter className="w-4 h-4 text-gray-400" />
-          <select value={filterAction} onChange={e => setFilterAction(e.target.value)}
+      <div className="px-8 py-3 flex items-center justify-end gap-3">
+  <Filter className="w-4 h-4 text-gray-400" />
+  <select value={filterAction} onChange={e => setFilterAction(e.target.value)}
             className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
             <option value="">Alla händelser</option>
             {uniqueActions.map(a => (
               <option key={a} value={a}>{ACTION_CONFIG[a]?.label ?? a}</option>
             ))}
           </select>
-          <select value={filterActor} onChange={e => setFilterActor(e.target.value)}
+  <select value={filterActor} onChange={e => setFilterActor(e.target.value)}
             className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
             <option value="">Alla aktörer</option>
             <option value="AI">Enbart AI</option>
             <option value="human">Enbart användare</option>
           </select>
-        </div>
-      </div>
+</div>
 
       <div className="flex-1 overflow-y-auto p-8">
         {loading ? (
