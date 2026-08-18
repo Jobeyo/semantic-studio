@@ -1,4 +1,5 @@
 'use client';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { Lock, Loader2, CheckCircle, Users, Plus, Trash2, Eye, EyeOff, Sparkles, RefreshCw, AlertCircle, CreditCard, X, Settings2 } from 'lucide-react';
@@ -14,6 +15,7 @@ interface User {
 type Section = 'password' | 'users' | 'llm';
 
 export default function SettingsPage() {
+  const { language, setLanguage } = useLanguage();
   const { data: session } = useSession();
   const isAdmin = (session?.user as any)?.role === 'admin';
   const [activeSection, setActiveSection] = useState<Section>('password');
@@ -559,6 +561,24 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
+
+      {/* Språk */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
+        <h2 className="text-base font-semibold text-gray-900">Språk / Language</h2>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => setLanguage('sv')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${language === 'sv' ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}>
+            🇸🇪 Svenska
+          </button>
+          <button
+            onClick={() => setLanguage('en')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${language === 'en' ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}>
+            🇬🇧 English
+          </button>
+        </div>
+        <p className="text-xs text-gray-400">{language === 'sv' ? 'Väljer visningsspråk i Studio' : 'Sets the display language in Studio'}</p>
+      </div>
     </div>
   );
 }

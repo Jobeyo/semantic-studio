@@ -2,9 +2,11 @@
 import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Layers, Home, Database, GitBranch, Settings, LogOut, BookOpen, History } from 'lucide-react';
+import { Layers, Home, Database, GitBranch, Settings, LogOut, BookOpen, History, Globe } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
+  const { language, setLanguage } = useLanguage();
   const { data: session } = useSession();
   const pathname = usePathname();
   const name = session?.user?.name ?? '';
