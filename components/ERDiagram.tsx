@@ -93,6 +93,7 @@ export default function ERDiagram({ views, modelId }: { views: View[]; modelId: 
   const [dragging, setDragging] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [savedMsg, setSavedMsg] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
@@ -121,7 +122,7 @@ export default function ERDiagram({ views, modelId }: { views: View[]; modelId: 
     const positions: Record<string, {x: number; y: number}> = {};
     nodes.forEach(n => { positions[n.id] = { x: n.x, y: n.y }; });
     localStorage.setItem(`${STORAGE_KEY}-${modelId}`, JSON.stringify(positions));
-    setSavedMsg(true); setTimeout(() => setSavedMsg(false), 2000);
+    setSavedMsg(true); setHasChanges(false); setTimeout(() => setSavedMsg(false), 2000);
   }
 
   const totalW = Math.max(...nodes.map(n => n.x + n.width + 60), 800);
@@ -141,6 +142,7 @@ export default function ERDiagram({ views, modelId }: { views: View[]; modelId: 
 
   function onMouseMove(e: React.MouseEvent) {
     if (!dragging) return;
+    setHasChanges(true);
     setNodes(prev => prev.map(n => n.id === dragging
       ? { ...n, x: e.clientX - dragOffset.x, y: e.clientY - dragOffset.y }
       : n
@@ -237,7 +239,7 @@ export default function ERDiagram({ views, modelId }: { views: View[]; modelId: 
         <span className="text-gray-400">Dra i rutorna för att flytta</span>
         <div className="ml-auto flex items-center gap-2">
           {savedMsg && <span className="text-xs text-green-600 font-medium">✓ Layout sparad</span>}
-          <button onClick={saveLayout} className="px-3 py-1 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700">
+          <button onClick={saveLayout} disabled={!hasChanges} className="px-3 py-1 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed">
             Spara layout
           </button>
         </div>
