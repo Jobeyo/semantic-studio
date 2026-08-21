@@ -62,10 +62,15 @@ export default function ModelDetailPage() {
   const [generatedViews, setGeneratedViews] = useState<{name: string; displayName: string; type: string; sql: string; columns: any[]}[]>([]);
   const [showSqlReview, setShowSqlReview] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [importableViews, setImportableViews] = useState<{name: string; isNew: boolean; columns: number}[]>([]);
+  const [selectedImportViews, setSelectedImportViews] = useState<string[]>([]);
+  const [loadingImport, setLoadingImport] = useState(false);
   const [syncStatus, setSyncStatus] = useState<Record<number, boolean>>({});
   const [editingName, setEditingName] = useState(false);
   const [newModelName, setNewModelName] = useState('');
   const [showDeleteModelDialog, setShowDeleteModelDialog] = useState(false);
+  const [deletingView, setDeletingView] = useState<{id: number; name: string} | null>(null);
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [publishMsg, setPublishMsg] = useState('');
   const [unpublishing, setUnpublishing] = useState(false);
@@ -186,21 +191,41 @@ export default function ModelDetailPage() {
   }
 
   async function importFromDB() {
-    if (!confirm('OBS! Importera från DB ersätter ALLA befintliga vyer i Studio med vyer från semantic_layer-schemat i databasen. Fortsätta?')) return;
-    setImporting(true);
+    setLoadingImport(true);
     try {
-      const res = await fetch(`/api/models/${id}/import`, { method: 'POST' });
+      // Hämta vyer från semantic_layer i DB
+      const res = await fetch(`/api/models/${id}/import?preview=true`);
+      if (res.ok) {
+        const data = await res.json();
+        const existingNames = new Set(model?.views.map(v => v.name) ?? []);
+        const views = (data.views ?? []).map((v: any) => ({
+          name: v.name,
+          isNew: !existingNames.has(v.name),
+          columns: v.columns?.length ?? 0,
+        }));
+        setImportableViews(views);
+        setSelectedImportViews(views.filter((v: any) => v.isNew).map((v: any) => v.name));
+        setShowImportDialog(true);
+      }
+    } catch {}
+    setLoadingImport(false);
+  }
+
+  async function confirmImport() {
+    if (selectedImportViews.length === 0) return;
+    setImporting(true);
+    setShowImportDialog(false);
+    try {
+      const res = await fetch(`/api/models/${id}/import`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ views: selectedImportViews }),
+      });
       if (res.ok) {
         const data = await res.json();
         setModel(prev => prev ? { ...prev, views: data.views } : prev);
-        alert(`Importerade ${data.count} vyer från semantic_layer`);
-      } else {
-        const err = await res.json();
-        alert('Import misslyckades: ' + err.error);
       }
-    } catch (e) {
-      alert('Import misslyckades');
-    }
+    } catch {}
     setImporting(false);
   }
 
@@ -330,7 +355,13 @@ export default function ModelDetailPage() {
   }
 
   async function deleteView(viewId: number, viewName: string) {
-    if (!confirm(`Ta bort vyn "${viewName}"? Den tas bara bort från Studio, inte från databasen.`)) return;
+    setDeletingView({id: viewId, name: viewName});
+  }
+
+  async function confirmDeleteView() {
+    if (!deletingView) return;
+    const viewId = deletingView.id;
+    setDeletingView(null);
     await fetch(`/api/models/${id}/views/${viewId}`, { method: 'DELETE' });
     setModel(prev => prev ? { ...prev, views: prev.views.filter(v => v.id !== viewId) } : prev);
   }
@@ -340,6 +371,57 @@ export default function ModelDetailPage() {
 
   return (
     <>
+    {deletingView && (
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40">
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6">
+          <h3 className="text-base font-semibold text-gray-900 mb-2">Ta bort vy</h3>
+          <p className="text-sm text-gray-500 mb-2">Ta bort <span className="font-medium text-gray-700">"{deletingView.name}"</span> från Studio?</p>
+          <p className="text-sm text-amber-600 mb-6">Vyn tas bara bort från Studio – den finns kvar i databasen.</p>
+          <div className="flex gap-3 justify-end">
+            <button onClick={() => setDeletingView(null)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">
+              Avbryt
+            </button>
+            <button onClick={confirmDeleteView} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700">
+              Ta bort
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    {showImportDialog && (
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40">
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
+          <h3 className="text-base font-semibold text-gray-900 mb-1">Importera vyer från databasen</h3>
+          <p className="text-sm text-gray-500 mb-4">Välj vilka vyer du vill importera. Befintliga vyer i Studio påverkas inte.</p>
+          <div className="space-y-2 max-h-64 overflow-y-auto mb-4">
+            {importableViews.map(v => (
+              <label key={v.name} className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
+                <input type="checkbox"
+                  checked={selectedImportViews.includes(v.name)}
+                  onChange={e => setSelectedImportViews(prev => e.target.checked ? [...prev, v.name] : prev.filter(n => n !== v.name))}
+                  className="w-4 h-4 text-indigo-600" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-900 font-mono">{v.name}</p>
+                  <p className="text-xs text-gray-400">{v.columns} kolumner</p>
+                </div>
+                {v.isNew ? (
+                  <span className="text-xs px-2 py-0.5 bg-green-50 text-green-700 border border-green-200 rounded-full">Ny</span>
+                ) : (
+                  <span className="text-xs px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-full">Finns redan</span>
+                )}
+              </label>
+            ))}
+          </div>
+          <div className="flex gap-3 justify-end">
+            <button onClick={() => setShowImportDialog(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">Avbryt</button>
+            <button onClick={confirmImport} disabled={selectedImportViews.length === 0}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
+              Importera {selectedImportViews.length > 0 ? `(${selectedImportViews.length})` : ''}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     {showPublishDialog && (
       <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40">
         <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">

@@ -3,7 +3,48 @@ import { auth } from '@/auth';
 import prisma from '@/lib/db';
 import { Client } from 'pg';
 
-export async function POST(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const session = await auth();
+    if (!session?.user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const { id } = await params;
+    const body = await request.json().catch(() => ({}));
+    const selectedViews: string[] | undefined = body.views;
+    const model = await prisma.semanticModel.findUnique({ where: { id: parseInt(id) } });
+    if (!model) return Response.json({ error: 'Not found' }, { status: 404 });
+    const config = model.sourceConfig as any;
+    const isPgLake = config.host === 'pg_lake';
+    const host = isPgLake ? (process.env.PG_LAKE_HOST ?? '188.240.222.70') : config.host;
+    const port = isPgLake ? parseInt(process.env.PG_LAKE_PORT ?? '55432') : config.port;
+    const client = new Client({
+      host, port, database: config.database,
+      user: config.user, password: config.password,
+      ssl: config.ssl ? { rejectUnauthorized: false } : undefined,
+      connectionTimeoutMillis: 10000,
+    });
+    await client.connect();
+    try {
+      const viewsRes = await client.query(`
+        SELECT v.table_name,
+               COUNT(c.column_name) AS column_count
+        FROM information_schema.views v
+        LEFT JOIN information_schema.columns c ON c.table_name = v.table_name AND c.table_schema = 'semantic_layer'
+        WHERE v.table_schema = 'semantic_layer'
+        GROUP BY v.table_name
+        ORDER BY v.table_name
+      `);
+      await client.end();
+      return Response.json({ views: viewsRes.rows.map(r => ({ name: r.table_name, columns: parseInt(r.column_count) })) });
+    } catch (e) {
+      await client.end();
+      throw e;
+    }
+  } catch (e) {
+    return Response.json({ error: (e as Error).message }, { status: 500 });
+  }
+}
+
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth();
     if (!session?.user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
@@ -13,8 +54,11 @@ export async function POST(_: NextRequest, { params }: { params: Promise<{ id: s
     if (!model) return Response.json({ error: 'Not found' }, { status: 404 });
 
     const config = model.sourceConfig as any;
+    const isPgLake = config.host === 'pg_lake';
+    const host = isPgLake ? (process.env.PG_LAKE_HOST ?? '188.240.222.70') : config.host;
+    const port = isPgLake ? parseInt(process.env.PG_LAKE_PORT ?? '55432') : config.port;
     const client = new Client({
-      host: config.host, port: config.port, database: config.database,
+      host, port, database: config.database,
       user: config.user, password: config.password,
       ssl: config.ssl ? { rejectUnauthorized: false } : undefined,
       connectionTimeoutMillis: 10000,
