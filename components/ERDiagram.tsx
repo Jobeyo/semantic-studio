@@ -67,7 +67,8 @@ function layoutNodes(views: View[]): Node[] {
   const facts = views.filter(v => v.type === 'fact');
   const dims = views.filter(v => v.type === 'dimension');
   const measures = views.filter(v => v.type === 'measure');
-  const ordered = [...facts, ...dims, ...measures];
+  const kpis = views.filter(v => v.type === 'kpi');
+  const ordered = [...facts, ...dims, ...measures, ...kpis];
 
   return ordered.map((view, i) => {
     const col = i % COLS;
@@ -99,7 +100,13 @@ export default function ERDiagram({ views, modelId }: { views: View[]; modelId: 
       try {
         const positions = JSON.parse(saved) as Record<string, {x: number; y: number}>;
         const layout = layoutNodes(views);
-        setNodes(layout.map(n => positions[n.id] ? { ...n, x: positions[n.id].x, y: positions[n.id].y } : n));
+        setNodes(layout.map((n, i) => {
+          if (positions[n.id]) return { ...n, x: positions[n.id].x, y: positions[n.id].y };
+          // Ny vy utan sparad position - lägg inom viewport
+          const col = i % 3;
+          const row = Math.floor(i / 3);
+          return { ...n, x: col * 280 + 40, y: row * 200 + 40 };
+        }));
       } catch {
         setNodes(layoutNodes(views));
       }

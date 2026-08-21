@@ -18,6 +18,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     });
     return Response.json(view, { status: 201 });
   } catch (e) {
-    return Response.json({ error: 'Server error' }, { status: 500 });
+    console.error('POST view error:', e);
+    return Response.json({ error: (e as Error).message }, { status: 500 });
   }
 }
