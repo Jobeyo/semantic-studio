@@ -72,7 +72,42 @@ export default function ModelDetailPage() {
   const [chatMessages, setChatMessages] = useState<{role: 'user'|'assistant'; content: string}[]>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
+  const [chatLLMInfo, setChatLLMInfo] = useState<{provider: string; model: string; dataSource: string; schema: string} | null>(null);
+
+  useEffect(() => {
+    fetch('/api/llm-providers')
+      .then(r => r.json())
+      .then((providers: any[]) => {
+        const def = providers.find(p => p.isDefault || p.is_default);
+        if (def) setChatLLMInfo({
+          provider: def.type,
+          model: def.config?.model ?? def.type,
+          dataSource: 'PostgreSQL',
+          schema: 'semantic_layer',
+        });
+      }).catch(() => {});
+  }, []);
   const chatBottomRef = useRef<HTMLDivElement>(null);
+  const [chatWidth, setChatWidth] = useState(384);
+  const isResizing = useRef(false);
+
+  function startResize(e: React.MouseEvent) {
+    isResizing.current = true;
+    const startX = e.clientX;
+    const startW = chatWidth;
+    function onMove(ev: MouseEvent) {
+      if (!isResizing.current) return;
+      const diff = startX - ev.clientX;
+      setChatWidth(Math.max(280, Math.min(700, startW + diff)));
+    }
+    function onUp() {
+      isResizing.current = false;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    }
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }
   const [activeTab, setActiveTab] = useState<'views' | 'sql' | 'settings' | 'er'>('views');
 
   useEffect(() => {
@@ -515,17 +550,44 @@ export default function ModelDetailPage() {
 
         {/* AI Chat-sidopanel */}
         {showChat && (
-          <div className="w-96 border-l border-gray-200 bg-white flex flex-col flex-shrink-0">
-            <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-indigo-500" />
-                <span className="font-medium text-sm text-gray-900">AI-assistent</span>
+          <div className="border-l border-gray-200 bg-white flex flex-col flex-shrink-0 overflow-hidden relative" style={{width: chatWidth}}>
+            <div onMouseDown={startResize} className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-indigo-400 z-10 transition-colors" />
+            <div className="px-4 py-3 border-b border-gray-200">
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-indigo-500" />
+                  <span className="font-semibold text-sm text-gray-900">AI-assistent</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  {chatMessages.length > 0 && (
+                    <button onClick={() => setChatMessages([])} className="text-xs text-gray-400 hover:text-gray-600">Rensa</button>
+                  )}
+                  <button onClick={() => setShowChat(false)} className="text-gray-400 hover:text-gray-600">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-              <button onClick={() => setShowChat(false)} className="text-gray-400 hover:text-gray-600">
-                <X className="w-4 h-4" />
-              </button>
+              {chatLLMInfo && (
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-xs text-gray-500">LLM: <span className="text-gray-700">{chatLLMInfo.provider} · {chatLLMInfo.model}</span></span>
+                  <span className="text-xs text-gray-400">Datakälla: <span className="text-gray-600">{chatLLMInfo.dataSource}</span></span>
+                  <span className="text-xs text-gray-400">Modell: <span className="text-gray-600">{chatLLMInfo.schema}</span></span>
+                </div>
+              )}
             </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="p-4 border-b border-gray-100">
+              <div className="flex gap-2">
+                <input value={chatInput} onChange={e => setChatInput(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendChat()}
+                  placeholder="Ställ en fråga om modellen..."
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <button onClick={sendChat} disabled={chatLoading || !chatInput.trim()}
+                  className="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50">
+                  <Send className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 flex flex-col-reverse">
               {chatMessages.length === 0 && (
                 <div className="text-center py-8 text-gray-400">
                   <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-30" />
@@ -560,18 +622,7 @@ export default function ModelDetailPage() {
               )}
               <div ref={chatBottomRef} />
             </div>
-            <div className="p-4 border-t border-gray-200">
-              <div className="flex gap-2">
-                <input value={chatInput} onChange={e => setChatInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendChat()}
-                  placeholder="Ställ en fråga om modellen..."
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                <button onClick={sendChat} disabled={chatLoading || !chatInput.trim()}
-                  className="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50">
-                  <Send className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
+
           </div>
         )}
       </div>

@@ -6,8 +6,11 @@ import { Client } from 'pg';
 
 async function getDbSchema(sourceType: string, config: any): Promise<string> {
   if (sourceType === 'postgres') {
+    const isPgLake = config.host === 'pg_lake';
+    const host = isPgLake ? (process.env.PG_LAKE_HOST ?? '188.240.222.70') : config.host;
+    const port = isPgLake ? (parseInt(process.env.PG_LAKE_PORT ?? '55432')) : config.port;
     const client = new Client({
-      host: config.host, port: config.port, database: config.database,
+      host, port, database: config.database,
       user: config.user, password: config.password,
       ssl: config.ssl ? { rejectUnauthorized: false } : undefined,
       connectionTimeoutMillis: 10000,
@@ -92,7 +95,7 @@ Svara på svenska.`;
           viewId: { type: 'number', description: 'Vyns ID' },
           displayName: { type: 'string', description: 'Nytt affärsnamn' },
           description: { type: 'string', description: 'Ny beskrivning' },
-          type: { type: 'string', enum: ['fact', 'dimension', 'measure'] },
+          type: { type: 'string', enum: ['fact', 'dimension', 'measure', 'kpi'] },
         },
         required: ['viewId'],
       },
@@ -122,7 +125,7 @@ Svara på svenska.`;
           name: { type: 'string', description: 'Vyns tekniska namn (snake_case)' },
           displayName: { type: 'string', description: 'Affärsnamn på svenska' },
           description: { type: 'string', description: 'Beskrivning av vyn' },
-          type: { type: 'string', enum: ['fact', 'dimension', 'measure'] },
+          type: { type: 'string', enum: ['fact', 'dimension', 'measure', 'kpi'] },
           sql: { type: 'string', description: 'SQL för att skapa vyn i semantic_layer-schemat' },
         },
         required: ['name', 'displayName', 'type', 'sql'],
@@ -155,10 +158,12 @@ Svara på svenska.`;
           { role: 'user', content: message },
         ];
 
+        // Skicka LLM-info till klienten
+        send({ type: 'llm_info', provider: providerType, model: modelName, dataSource: model.sourceType, schema: (model.sourceConfig as any)?.schema ?? 'semantic_layer' });
         let continueLoop = true;
         while (continueLoop) {
           const msg = await anthropic.messages.create({
-            model: 'claude-sonnet-4-6',
+            model: modelName,
             max_tokens: 2000,
             system: systemPrompt,
             tools,

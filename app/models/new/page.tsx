@@ -529,8 +529,8 @@ export default function NewModelPage() {
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-sm text-gray-900">{view.displayName}</span>
                       <span className="text-xs text-gray-400 font-mono">{view.name}</span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full border ${view.type === 'fact' ? 'bg-blue-50 text-blue-600 border-blue-200' : view.type === 'dimension' ? 'bg-purple-50 text-purple-600 border-purple-200' : 'bg-green-50 text-green-600 border-green-200'}`}>
-                        {view.type === 'fact' ? 'Faktatabell' : view.type === 'dimension' ? 'Dimension' : 'Mått'}
+                      <span className={`text-xs px-2 py-0.5 rounded-full border ${view.type === 'fact' ? 'bg-blue-50 text-blue-600 border-blue-200' : view.type === 'dimension' ? 'bg-purple-50 text-purple-600 border-purple-200' : view.type === 'kpi' ? 'bg-amber-50 text-amber-600 border-amber-200' : 'bg-green-50 text-green-600 border-green-200'}`}>
+                        {view.type === 'fact' ? 'Faktatabell' : view.type === 'dimension' ? 'Dimension' : view.type === 'kpi' ? 'Nyckeltal' : 'Mått'}
                       </span>
                     </div>
                     <span className="text-xs text-gray-400">{view.columns?.length ?? 0} kolumner</span>

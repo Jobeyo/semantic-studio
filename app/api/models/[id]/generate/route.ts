@@ -144,7 +144,7 @@ Returnera EXAKT följande JSON-format utan kommentarer:
       "name": "view_name",
       "displayName": "Affärsnamn på svenska",
       "description": "Beskrivning",
-      "type": "fact|dimension|measure",
+      "type": "fact|dimension|measure|kpi",
       "sql": "CREATE OR REPLACE VIEW ${targetSchema}.\\"view_name\\" AS SELECT ...",
       "columns": [
         {

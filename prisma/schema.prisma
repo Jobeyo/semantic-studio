@@ -56,7 +56,7 @@ model ModelView {
   name        String // Vyns namn i databasen
   displayName String // Affärsnamn
   description String?
-  type        String // fact, dimension, measure
+  type        String // fact, dimension, measure, kpi
   sql         String // Den SQL-fråga som skapar vyn
   columns     ViewColumn[]
   createdAt   DateTime      @default(now())
@@ -74,6 +74,8 @@ model ViewColumn {
   isKey       Boolean   @default(false)
   isMeasure   Boolean   @default(false)
   format      String? // ex. "#,##0.00", "YYYY-MM-DD"
+  isDerived   Boolean   @default(false) // Härlett mått eller härledd kolumn
+  expression  String?   // SQL-uttryck för härledda kolumner/mått
   createdAt   DateTime  @default(now())
 }
 
