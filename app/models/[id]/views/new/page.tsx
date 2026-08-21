@@ -86,7 +86,7 @@ export default function NewViewPage() {
       const a = v.name.charAt(0) + i;
       const joinKey = v.columns.find(c => c.isKey)?.name ?? 'id';
       const primaryKey = primaryView.columns.find(c => c.isKey)?.name ?? 'id';
-      fromClause += `\nJOIN semantic_layer."${v.name}" ${a} ON ${a}.${joinKey} = ${alias}.${primaryKey}`;
+      fromClause += `\nJOIN semantic_layer."${v.name}" ${a} ON ${a}.${joinKey}::text = ${alias}.${primaryKey}::text`;
     });
 
     const groupBy = dimCols.length > 0
@@ -305,9 +305,16 @@ export default function NewViewPage() {
                     <span className="w-6 h-6 rounded-full bg-indigo-600 text-white text-xs flex items-center justify-center font-medium">4</span>
                     <h2 className="font-semibold text-gray-900">Genererad SQL</h2>
                   </div>
-                  <pre className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs font-mono bg-gray-900 text-green-400 overflow-x-auto whitespace-pre-wrap">
-                    {generateKpiSql() || '-- Fyll i stegen ovan för att generera SQL'}
-                  </pre>
+                  <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+                    <span className="text-amber-500 text-base leading-none">⚠️</span>
+                    <div>
+                      <p className="font-medium mb-0.5">Granska SQL innan körning</p>
+                      <p className="text-amber-700">JOIN-villkoren genereras automatiskt baserat på nyckelkolumner och kan behöva justeras manuellt. Kontrollera att tabellkopplingarna stämmer med din datamodell innan du kör SQL i databasen.</p>
+                    </div>
+                  </div>
+                  <textarea value={generateKpiSql()} onChange={() => {}}
+                    rows={10}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-xs font-mono bg-gray-900 text-green-400 overflow-x-auto resize-none" />
                 </div>
               )}
             </>

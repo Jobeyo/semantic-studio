@@ -65,6 +65,7 @@ export default function ModelDetailPage() {
   const [syncStatus, setSyncStatus] = useState<Record<number, boolean>>({});
   const [editingName, setEditingName] = useState(false);
   const [newModelName, setNewModelName] = useState('');
+  const [showDeleteModelDialog, setShowDeleteModelDialog] = useState(false);
   const [savingName, setSavingName] = useState(false);
   const [executingSql, setExecutingSql] = useState<number | null>(null);
   const [sqlPreview, setSqlPreview] = useState<{viewId: number; name: string; sql: string} | null>(null);
@@ -301,7 +302,10 @@ export default function ModelDetailPage() {
   }
 
   async function deleteModel() {
-    if (!confirm('Ta bort modellen?')) return;
+    setShowDeleteModelDialog(true);
+  }
+
+  async function confirmDeleteModel() {
     await fetch(`/api/models/${id}`, { method: 'DELETE' });
     window.location.href = '/models';
   }
@@ -321,6 +325,24 @@ export default function ModelDetailPage() {
   if (!model) return <div className="flex items-center justify-center h-full text-gray-400">Modellen hittades inte</div>;
 
   return (
+    <>
+    {showDeleteModelDialog && (
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40">
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6">
+          <h3 className="text-base font-semibold text-gray-900 mb-2">Ta bort modell</h3>
+          <p className="text-sm text-gray-500 mb-2">Är du säker på att du vill ta bort <span className="font-medium text-gray-700">{model?.name}</span>?</p>
+          <p className="text-sm text-red-500 mb-6">Detta går inte att ångra. Alla vyer och kolumner i Studio tas bort. Databasen påverkas inte.</p>
+          <div className="flex gap-3 justify-end">
+            <button onClick={() => setShowDeleteModelDialog(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">
+              Avbryt
+            </button>
+            <button onClick={confirmDeleteModel} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700">
+              Ta bort
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     <div className="flex flex-col h-full">
       <div className="px-8 py-5 border-b border-gray-200 bg-white">
         <div className="flex items-center gap-4 mb-3">
@@ -552,7 +574,7 @@ export default function ModelDetailPage() {
             <div className="bg-red-50 border border-red-200 rounded-xl p-6">
               <h3 className="font-semibold text-red-700 mb-2">Farlig zon</h3>
               <p className="text-sm text-red-600 mb-4">Att ta bort en modell kan inte ångras.</p>
-              <button onClick={deleteModel} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700">
+              <button onClick={() => setShowDeleteModelDialog(true)} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700">
                 Ta bort modell
               </button>
             </div>
@@ -639,5 +661,8 @@ export default function ModelDetailPage() {
         )}
       </div>
     </div>
+  );
+
+    </>
   );
 }
