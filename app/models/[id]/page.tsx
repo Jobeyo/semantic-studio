@@ -66,6 +66,9 @@ export default function ModelDetailPage() {
   const [editingName, setEditingName] = useState(false);
   const [newModelName, setNewModelName] = useState('');
   const [showDeleteModelDialog, setShowDeleteModelDialog] = useState(false);
+  const [showPublishDialog, setShowPublishDialog] = useState(false);
+  const [publishMsg, setPublishMsg] = useState('');
+  const [unpublishing, setUnpublishing] = useState(false);
   const [savingName, setSavingName] = useState(false);
   const [executingSql, setExecutingSql] = useState<number | null>(null);
   const [sqlPreview, setSqlPreview] = useState<{viewId: number; name: string; sql: string} | null>(null);
@@ -253,35 +256,46 @@ export default function ModelDetailPage() {
     } catch {}
   }
 
-  async function publishModel() {
+  async function triggerPublish() {
     if (!model) return;
     const unsynced = model.views.filter(v => syncStatus[v.id] === false);
     const msg = unsynced.length > 0
       ? `Publicera modellen? ${unsynced.length} nya/ej synkade vyer kommer att skapas i databasen: ${unsynced.map(v => v.name).join(', ')}`
-      : 'Publicera modellen? Metadata-ändringar (namn, beskrivningar) sparas i Studio. Vyer som redan finns i databasen påverkas inte.';
-    if (!confirm(msg)) return;
-    // Kör SQL för alla ej synkade vyer
-    for (const view of unsynced) {
-      try {
-        const res = await fetch(`/api/models/${id}/execute-sql`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ viewId: view.id }),
-        });
-        if (res.ok) setSyncStatus(prev => ({ ...prev, [view.id]: true }));
-        else {
-          const err = await res.json();
-          alert(`Fel vid körning av ${view.name}: ${err.error}`);
+      : model.status === 'published'
+        ? 'Avpublicera modellen? Modellen sätts tillbaka till utkast-läge i Studio. Vyerna i databasen (semantic_layer) påverkas inte och är fortfarande tillgängliga för Klarify.'
+        : 'Publicera modellen? Metadata-ändringar sparas i Studio. Vyer som redan finns i databasen påverkas inte.';
+    setPublishMsg(msg);
+    setShowPublishDialog(true);
+  }
+
+  async function publishModel() {
+    setShowPublishDialog(false);
+    if (!model) return;
+    const newStatus = model.status === 'published' ? 'draft' : 'published';
+    const unsynced = model.views.filter(v => syncStatus[v.id] === false);
+    // Kör SQL för alla ej synkade vyer om vi publicerar
+    if (newStatus === 'published') {
+      for (const view of unsynced) {
+        try {
+          const res = await fetch(`/api/models/${id}/execute-sql`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ viewId: view.id }),
+          });
+          if (res.ok) setSyncStatus(prev => ({ ...prev, [view.id]: true }));
+          else {
+            const err = await res.json();
+            alert(`Fel vid körning av ${view.name}: ${err.error}`);
+            return;
+          }
+        } catch {
+          alert(`Fel vid körning av ${view.name}`);
           return;
         }
-      } catch {
-        alert(`Fel vid körning av ${view.name}`);
-        return;
       }
     }
-    // Sätt status till published
-    await fetch(`/api/models/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'published' }) });
-    setModel(prev => prev ? { ...prev, status: 'published' } : prev);
+    await fetch(`/api/models/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: newStatus }) });
+    setModel(prev => prev ? { ...prev, status: newStatus } : prev);
   }
 
   async function saveModelName() {
@@ -326,6 +340,24 @@ export default function ModelDetailPage() {
 
   return (
     <>
+    {showPublishDialog && (
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40">
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 p-6">
+          <h3 className="text-base font-semibold text-gray-900 mb-2">
+            {model?.status === 'published' ? 'Avpublicera modell' : 'Publicera modell'}
+          </h3>
+          <p className="text-sm text-gray-500 mb-6">{publishMsg}</p>
+          <div className="flex gap-3 justify-end">
+            <button onClick={() => setShowPublishDialog(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">
+              Avbryt
+            </button>
+            <button onClick={publishModel} className={`px-4 py-2 text-white rounded-lg text-sm font-medium ${model?.status === 'published' ? 'bg-gray-400 hover:bg-gray-500' : 'bg-indigo-600 hover:bg-indigo-700'}`}>
+              {model?.status === 'published' ? 'Avpublicera' : 'Publicera'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     {showDeleteModelDialog && (
       <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40">
         <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6">
@@ -373,15 +405,12 @@ export default function ModelDetailPage() {
               Generera med AI
             </Link>
             {model.status !== 'published' ? (
-              <button onClick={publishModel} className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700">
+              <button onClick={triggerPublish} className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700">
                 <CheckCircle className="w-4 h-4" /> Publicera
               </button>
             ) : (
-              <button onClick={async () => {
-                await fetch(`/api/models/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'draft' }) });
-                setModel(prev => prev ? { ...prev, status: 'draft' } : prev);
-              }} className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-500 hover:bg-gray-50">
-                Avpublicera
+              <button onClick={triggerPublish} className="flex items-center gap-2 px-3 py-2 bg-gray-400 text-white rounded-lg text-sm font-medium hover:bg-gray-500">
+                <CheckCircle className="w-4 h-4" /> Avpublicera
               </button>
             )}
             <Link href={`/models/${id}/views/new`} className="flex items-center gap-2 px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">
