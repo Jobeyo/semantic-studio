@@ -254,8 +254,9 @@ export default function NewViewPage() {
                       <h2 className="font-semibold text-gray-900">Härledda mått</h2>
                     </div>
                     <div className="flex gap-2">
-                      <button onClick={generateWithAI} disabled={aiGenerating}
-                        className="flex items-center gap-1.5 px-3 py-1.5 border border-indigo-200 text-indigo-600 rounded-lg text-sm hover:bg-indigo-50 disabled:opacity-50">
+                      <button onClick={generateWithAI} disabled={aiGenerating || derivedMeasures.filter(m => m.displayName).length === 0}
+                        title={derivedMeasures.filter(m => m.displayName).length === 0 ? "Fyll i affärsnamn på minst ett mått först" : ""}
+                        className="flex items-center gap-1.5 px-3 py-1.5 border border-indigo-200 text-indigo-600 rounded-lg text-sm hover:bg-indigo-50 disabled:opacity-50 disabled:cursor-not-allowed">
                         {aiGenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                         Generera med AI
                       </button>
@@ -265,7 +266,8 @@ export default function NewViewPage() {
                       </button>
                     </div>
                   </div>
-                  <p className="text-sm text-gray-500">Ange SQL-uttryck för varje härlett mått. Tillgängliga källmått: {measureColumns.map(c => c.name).join(', ') || 'välj basvyer med mått'}</p>
+                  <p className="text-sm text-gray-500">Ange affärsnamn för dina mått och klicka "Generera med AI" – AI skapar SQL-uttrycken åt dig. Eller skriv SQL direkt.</p>
+                  <p className="text-xs text-gray-400">Tillgängliga källmått: <span className="font-mono">{measureColumns.map(c => c.name).join(', ') || 'välj basvyer med mått'}</span></p>
                   <div className="space-y-3">
                     {derivedMeasures.map((m, i) => (
                       <div key={i} className="grid grid-cols-12 gap-2 items-start border border-gray-100 rounded-lg p-3 bg-gray-50">
