@@ -164,7 +164,7 @@ export default function NewViewPage() {
         <h1 className="text-lg font-semibold text-gray-900">Ny vy</h1>
         {type === 'kpi' && <span className="px-2 py-0.5 text-xs rounded-full bg-amber-50 text-amber-700 border border-amber-200">Nyckeltal (KPI)</span>}
       </div>
-      <div className="flex-1 overflow-y-auto p-8">
+      <div className="flex-1 overflow-y-auto p-8 pb-24">
         <div className="max-w-3xl space-y-6">
 
           {/* Vyinformation */}
