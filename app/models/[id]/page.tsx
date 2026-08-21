@@ -484,8 +484,12 @@ export default function ModelDetailPage() {
         {activeTab === 'er' && (
           <div className="h-full p-4 flex flex-col">
             <div className="flex justify-end mb-2">
-              <button onClick={() => { localStorage.removeItem(`er-diagram-positions-${model.id}`); window.location.reload(); }}
-                className="text-xs text-gray-400 hover:text-gray-600 border border-gray-200 px-3 py-1 rounded-lg">
+              <button onClick={() => {
+                if (window.confirm('Återställ layouten? Alla dina positioner nollställs.')) {
+                  localStorage.removeItem(`er-diagram-positions-${model.id}`);
+                  window.location.reload();
+                }
+              }} className="text-xs text-gray-400 hover:text-gray-600 border border-gray-200 px-3 py-1 rounded-lg">
                 Återställ layout
               </button>
             </div>

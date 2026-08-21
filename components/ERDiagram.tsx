@@ -92,6 +92,7 @@ export default function ERDiagram({ views, modelId }: { views: View[]; modelId: 
   const [edges, setEdges] = useState<Edge[]>([]);
   const [dragging, setDragging] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [savedMsg, setSavedMsg] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
@@ -120,7 +121,7 @@ export default function ERDiagram({ views, modelId }: { views: View[]; modelId: 
     const positions: Record<string, {x: number; y: number}> = {};
     nodes.forEach(n => { positions[n.id] = { x: n.x, y: n.y }; });
     localStorage.setItem(`${STORAGE_KEY}-${modelId}`, JSON.stringify(positions));
-    alert('Layout sparad!');
+    setSavedMsg(true); setTimeout(() => setSavedMsg(false), 2000);
   }
 
   const totalW = Math.max(...nodes.map(n => n.x + n.width + 60), 800);
@@ -234,9 +235,12 @@ export default function ERDiagram({ views, modelId }: { views: View[]; modelId: 
         <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-green-700 inline-block" /> Mått</span>
         <span className="flex items-center gap-1.5"><span className="w-4 h-px border-t border-dashed border-slate-400 inline-block" /> Relation</span>
         <span className="text-gray-400">Dra i rutorna för att flytta</span>
-        <button onClick={saveLayout} className="ml-auto px-3 py-1 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700">
-          Spara layout
-        </button>
+        <div className="ml-auto flex items-center gap-2">
+          {savedMsg && <span className="text-xs text-green-600 font-medium">✓ Layout sparad</span>}
+          <button onClick={saveLayout} className="px-3 py-1 bg-indigo-600 text-white rounded-lg text-xs font-medium hover:bg-indigo-700">
+            Spara layout
+          </button>
+        </div>
       </div>
     </div>
   );
