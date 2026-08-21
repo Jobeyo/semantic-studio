@@ -267,7 +267,7 @@ export default function NewModelPage() {
             <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
               <div>
                 <h2 className="font-semibold text-gray-900">Källdatabas</h2>
-                <p className="text-sm text-gray-500 mt-1">Databasen där rådata finns. AI analyserar tabellerna härifrån.</p>
+                <p className="text-sm text-gray-500 mt-1">Databasen där källdata finns. AI analyserar tabellerna härifrån.</p>
               </div>
               {existingConns.length > 0 && (
                 <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3">
@@ -345,7 +345,7 @@ export default function NewModelPage() {
             <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
               <div>
                 <h2 className="font-semibold text-gray-900">Källschema</h2>
-                <p className="text-sm text-gray-500 mt-1">Välj schemat med rådata. AI analyserar tabellerna och genererar ett semantiskt lager.</p>
+                <p className="text-sm text-gray-500 mt-1">Välj schemat med källdata. AI analyserar tabellerna och genererar ett semantiskt lager.</p>
               </div>
               {loadingSrcSchemas ? (
                 <div className="flex items-center gap-2 text-sm text-gray-400 py-4"><Loader2 className="w-4 h-4 animate-spin" /> Hämtar scheman...</div>

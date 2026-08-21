@@ -268,7 +268,7 @@ export default function GeneratePage() {
           {step === 'source-schema' && (
             <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
               <h2 className="font-semibold text-gray-900">Välj källschema</h2>
-              <p className="text-sm text-gray-500">Välj det schema där rådata finns. AI analyserar tabellerna och föreslår ett semantiskt lager.</p>
+              <p className="text-sm text-gray-500">Välj det schema där källdata finns. AI analyserar tabellerna och föreslår ett semantiskt lager.</p>
 
               {loadingSchemas ? (
                 <div className="flex items-center gap-2 text-sm text-gray-400 py-4">

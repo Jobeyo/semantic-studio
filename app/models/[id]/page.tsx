@@ -51,6 +51,7 @@ const typeLabels: Record<string, string> = {
 
 export default function ModelDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const [model, setModel] = useState<Model | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedViews, setExpandedViews] = useState<Set<number>>(new Set());
@@ -70,6 +71,7 @@ export default function ModelDetailPage() {
   const [editingName, setEditingName] = useState(false);
   const [newModelName, setNewModelName] = useState('');
   const [showDeleteModelDialog, setShowDeleteModelDialog] = useState(false);
+  const [showGenerateDialog, setShowGenerateDialog] = useState(false);
   const [deletingView, setDeletingView] = useState<{id: number; name: string} | null>(null);
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [publishMsg, setPublishMsg] = useState('');
@@ -371,6 +373,24 @@ export default function ModelDetailPage() {
 
   return (
     <>
+    {showGenerateDialog && (
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40">
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6">
+          <h3 className="text-base font-semibold text-gray-900 mb-2">Generera med AI</h3>
+          <p className="text-sm text-gray-500 mb-2">AI analyserar källschemat och föreslår nya vyer för den semantiska modellen.</p>
+          <p className="text-sm text-gray-500 mb-6">Befintliga vyer i Studio påverkas inte – du väljer själv vilka förslag du vill lägga till.</p>
+          <div className="flex gap-3 justify-end">
+            <button onClick={() => setShowGenerateDialog(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">
+              Avbryt
+            </button>
+            <button onClick={() => { setShowGenerateDialog(false); router.push(`/models/${id}/generate`); }}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">
+              <Sparkles className="w-4 h-4" /> Fortsätt
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     {deletingView && (
       <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40">
         <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6">
@@ -481,11 +501,11 @@ export default function ModelDetailPage() {
               {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Table className="w-4 h-4 text-green-500" />}
               Importera från DB
             </button>
-            <Link href={`/models/${id}/generate`}
+            <button onClick={() => setShowGenerateDialog(true)}
               className="flex items-center gap-2 px-3 py-2 border border-gray-200 rounded-lg text-sm hover:bg-gray-50">
               <Sparkles className="w-4 h-4 text-indigo-500" />
               Generera med AI
-            </Link>
+            </button>
             {model.status !== 'published' ? (
               <button onClick={triggerPublish} className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700">
                 <CheckCircle className="w-4 h-4" /> Publicera

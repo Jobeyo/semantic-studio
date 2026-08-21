@@ -64,9 +64,12 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id:
     const session = await auth();
     if (!session?.user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const { viewId } = await params;
+    // Ta bort kolumner först pga foreign key constraint
+    await prisma.viewColumn.deleteMany({ where: { viewId: parseInt(viewId) } });
     await prisma.modelView.delete({ where: { id: parseInt(viewId) } });
     return Response.json({ success: true });
   } catch (e) {
-    return Response.json({ error: 'Server error' }, { status: 500 });
+    console.error('DELETE view error:', e);
+    return Response.json({ error: (e as Error).message }, { status: 500 });
   }
 }
