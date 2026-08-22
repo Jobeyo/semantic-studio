@@ -152,7 +152,8 @@ export default function ERDiagram({ views, modelId }: { views: View[]; modelId: 
   function onMouseUp() { setDragging(null); }
 
   return (
-    <div className="w-full overflow-auto border border-gray-200 rounded-xl bg-gray-50">
+    <div className="w-full h-full border border-gray-200 rounded-xl bg-gray-50 flex flex-col">
+      <div className="flex-1 overflow-auto min-h-0">
       <svg
         ref={svgRef}
         width={totalW}
@@ -231,7 +232,8 @@ export default function ERDiagram({ views, modelId }: { views: View[]; modelId: 
           );
         })}
       </svg>
-      <div className="p-3 border-t border-gray-200 flex items-center gap-6 text-xs text-gray-500">
+      </div>
+      <div className="p-3 border-t border-gray-200 flex items-center gap-6 text-xs text-gray-500 flex-shrink-0 bg-white">
         <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-blue-700 inline-block" /> Faktatabell</span>
         <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-violet-700 inline-block" /> Dimension</span>
         <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-green-700 inline-block" /> Mått</span>
