@@ -67,6 +67,7 @@ export default function NewModelPage() {
   const [generatedViews, setGeneratedViews] = useState<GeneratedView[]>([]);
   const [confirmSaving, setConfirmSaving] = useState(false);
   const [deletingViewIndex, setDeletingViewIndex] = useState<number | null>(null);
+  const [previewCollapsed, setPreviewCollapsed] = useState<Record<number, boolean>>({});
   const [errorMsg, setErrorMsg] = useState('');
   const [previewData, setPreviewData] = useState<Record<number, {count: number; columns: string[]; rows: any[]; loading: boolean; error: string}>>({});
 
@@ -625,8 +626,6 @@ export default function NewModelPage() {
                       </span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-3">
-                      <span className="text-xs text-gray-400">{view.columns?.length ?? 0} kolumner</span>
                       {previewData[i]?.count !== undefined && !previewData[i]?.loading && (
                         <span className="text-xs text-green-600">{previewData[i].count.toLocaleString()} rader</span>
                       )}
@@ -639,29 +638,32 @@ export default function NewModelPage() {
                         Ta bort
                       </button>
                     </div>
-                      <button onClick={() => setGeneratedViews(prev => prev.filter((_, j) => j !== i))}
-                        className="text-xs text-red-400 hover:text-red-600 hover:bg-red-50 px-2 py-0.5 rounded transition-colors">
-                        Ta bort
-                      </button>
-                    </div>
                   </div>
                   {view.description && <div className="px-4 py-2 text-xs text-gray-500 border-b border-gray-100">{view.description}</div>}
                   <textarea value={view.sql} onChange={e => setGeneratedViews(prev => prev.map((v, j) => j === i ? { ...v, sql: e.target.value } : v))}
                     rows={8} className="w-full px-4 py-3 text-xs font-mono bg-gray-900 text-green-400 resize-none focus:outline-none" />
                   {previewData[i]?.rows?.length > 0 && (
-                    <div className="overflow-x-auto border-t border-gray-200">
-                      <table className="w-full text-xs">
-                        <thead className="bg-gray-50">
-                          <tr>{previewData[i].columns.map(c => <th key={c} className="px-3 py-2 text-left text-gray-600 font-medium uppercase tracking-wider">{c}</th>)}</tr>
-                        </thead>
-                        <tbody>
-                          {previewData[i].rows.map((row, ri) => (
-                            <tr key={ri} className="border-t border-gray-100">
-                              {previewData[i].columns.map(c => <td key={c} className="px-3 py-2 text-gray-700">{String(row[c] ?? '')}</td>)}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                    <div className="border-t border-gray-200">
+                      <button onClick={() => setPreviewCollapsed(prev => ({...prev, [i]: !prev[i]}))}
+                        className="w-full px-4 py-2 text-xs text-gray-500 hover:bg-gray-50 flex items-center justify-between">
+                        <span>{previewCollapsed[i] ? '▶ Visa preview' : '▼ Dölj preview'} ({previewData[i].count.toLocaleString()} rader)</span>
+                      </button>
+                      {!previewCollapsed[i] && (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-xs">
+                            <thead className="bg-gray-50">
+                              <tr>{previewData[i].columns.map(c => <th key={c} className="px-3 py-2 text-left text-gray-600 font-medium uppercase tracking-wider">{c}</th>)}</tr>
+                            </thead>
+                            <tbody>
+                              {previewData[i].rows.map((row, ri) => (
+                                <tr key={ri} className="border-t border-gray-100">
+                                  {previewData[i].columns.map(c => <td key={c} className="px-3 py-2 text-gray-700">{String(row[c] ?? '')}</td>)}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                     </div>
                   )}
                   {previewData[i]?.error && (
