@@ -626,7 +626,7 @@ export default function ModelDetailPage() {
                   <span className="font-medium text-gray-900 text-sm">{view.displayName}</span>
                   <span className="text-xs text-gray-400 font-mono">{view.name}</span>
                 </div>
-                <pre className="p-5 text-xs font-mono text-green-400 overflow-x-auto bg-gray-900">
+                <pre className="p-5 text-xs font-mono text-green-400 overflow-x-auto bg-gray-900 whitespace-pre-wrap">
                   {view.sql || '-- Ingen SQL definierad'}
                 </pre>
               </div>

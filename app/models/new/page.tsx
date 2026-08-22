@@ -62,6 +62,7 @@ export default function NewModelPage() {
   const [generating, setGenerating] = useState(false);
   const [generatedViews, setGeneratedViews] = useState<GeneratedView[]>([]);
   const [confirmSaving, setConfirmSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   // Befintliga anslutningar
   const [existingConns, setExistingConns] = useState<any[]>([]);
@@ -156,7 +157,7 @@ export default function NewModelPage() {
         setNewSchemaName('');
       } else {
         const err = await res.json();
-        alert('Kunde inte skapa schema: ' + err.error);
+        setErrorMsg('Kunde inte skapa schema: ' + err.error);
       }
     } catch {}
     setCreatingSchema(false);
@@ -164,7 +165,7 @@ export default function NewModelPage() {
 
   async function createModel() {
     const schema = schemaAction === 'new' ? newSchemaName.trim() : selectedTargetSchema;
-    if (!schema) { alert('Välj eller skapa ett schema'); return; }
+    if (!schema) { setErrorMsg('Välj eller skapa ett schema'); return; }
     setSaving(true);
     const conn = getTargetConn();
     try {
@@ -193,9 +194,9 @@ export default function NewModelPage() {
         setStep('sql');
       } else {
         const err = await res.json();
-        alert('Fel: ' + err.error);
+        setErrorMsg('Fel: ' + err.error);
       }
-    } catch { alert('Generering misslyckades'); }
+    } catch { setErrorMsg('Generering misslyckades'); }
     setGenerating(false);
   }
 
@@ -487,6 +488,12 @@ export default function NewModelPage() {
                       ))}
                     </select>
                   )}
+                </div>
+              )}
+              {errorMsg && (
+                <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700 flex items-center justify-between">
+                  <span>⚠️ {errorMsg}</span>
+                  <button onClick={() => setErrorMsg('')} className="text-red-400 hover:text-red-600 ml-4">✕</button>
                 </div>
               )}
               <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-700">
