@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Loader2, TestTube, CheckCircle, Plus, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 
-type Step = 'info' | 'source-db' | 'source-schema' | 'target-db' | 'target-schema' | 'sql';
+type Step = 'info' | 'source-db' | 'source-schema' | 'target-db' | 'target-schema' | 'naming' | 'sql';
 
 interface GeneratedView {
   name: string; displayName: string; description: string;
@@ -15,6 +15,10 @@ export default function NewModelPage() {
   const router = useRouter();
   const [step, setStep] = useState<Step>('info');
   const [createdModelId, setCreatedModelId] = useState<number | null>(null);
+
+  // Namnkonventioner
+  const [namingLanguage, setNamingLanguage] = useState<'sv' | 'en'>('sv');
+  const [namingStyle, setNamingStyle] = useState<'underscore' | 'camel'>('underscore');
 
   // Steg 1 – Grundinfo
   const [name, setName] = useState('');
@@ -63,6 +67,7 @@ export default function NewModelPage() {
   const [generatedViews, setGeneratedViews] = useState<GeneratedView[]>([]);
   const [confirmSaving, setConfirmSaving] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [previewData, setPreviewData] = useState<Record<number, {count: number; columns: string[]; rows: any[]; loading: boolean; error: string}>>({});
 
   // Befintliga anslutningar
   const [existingConns, setExistingConns] = useState<any[]>([]);
@@ -83,6 +88,7 @@ export default function NewModelPage() {
     { key: 'source-schema', label: 'Källschema' },
     { key: 'target-db', label: 'Mål DB' },
     { key: 'target-schema', label: 'Målschema' },
+    { key: 'naming', label: 'Namnkonvention' },
     { key: 'sql', label: 'Granska' },
   ];
   const currentStepIdx = stepLabels.findIndex(s => s.key === step);
@@ -191,13 +197,32 @@ export default function NewModelPage() {
       if (res.ok) {
         const data = await res.json();
         setGeneratedViews(data.views);
-        setStep('sql');
+        setStep('naming');
       } else {
         const err = await res.json();
         setErrorMsg('Fel: ' + err.error);
       }
     } catch { setErrorMsg('Generering misslyckades'); }
     setGenerating(false);
+  }
+
+  async function previewView(index: number, sql: string) {
+    setPreviewData(prev => ({ ...prev, [index]: { count: 0, columns: [], rows: [], loading: true, error: '' } }));
+    try {
+      const res = await fetch(`/api/models/${createdModelId}/preview`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sql, sourceConfig: { host: srcHost, port: parseInt(srcPort), database: srcDatabase, user: srcUser, password: srcPassword, ssl: srcSsl } }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setPreviewData(prev => ({ ...prev, [index]: { ...data, loading: false, error: '' } }));
+      } else {
+        setPreviewData(prev => ({ ...prev, [index]: { count: 0, columns: [], rows: [], loading: false, error: data.error } }));
+      }
+    } catch (e) {
+      setPreviewData(prev => ({ ...prev, [index]: { count: 0, columns: [], rows: [], loading: false, error: 'Fel vid preview' } }));
+    }
   }
 
   async function confirmAndSave() {
@@ -511,6 +536,58 @@ export default function NewModelPage() {
           )}
 
           {/* Steg 6: Granska SQL */}
+          {step === 'naming' && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Namnkonvention</h2>
+                <p className="text-sm text-gray-500 mt-0.5">Välj hur AI ska namnge vyer och kolumner</p>
+              </div>
+
+              <div className="bg-white border border-gray-200 rounded-xl p-6 space-y-6">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Språk för affärsnamn</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button onClick={() => setNamingLanguage('sv')}
+                      className={`p-4 rounded-xl border-2 text-left transition-colors ${namingLanguage === 'sv' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                      <div className="text-2xl mb-2">🇸🇪</div>
+                      <p className="font-medium text-gray-900 text-sm">Svenska</p>
+                      <p className="text-xs text-gray-500 mt-0.5">ex. "Orderdatum", "Kundnamn"</p>
+                    </button>
+                    <button onClick={() => setNamingLanguage('en')}
+                      className={`p-4 rounded-xl border-2 text-left transition-colors ${namingLanguage === 'en' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                      <div className="text-2xl mb-2">🇬🇧</div>
+                      <p className="font-medium text-gray-900 text-sm">Engelska</p>
+                      <p className="text-xs text-gray-500 mt-0.5">ex. "Order Date", "Customer Name"</p>
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3">Notation för tekniska namn (i DB)</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button onClick={() => setNamingStyle('underscore')}
+                      className={`p-4 rounded-xl border-2 text-left transition-colors ${namingStyle === 'underscore' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                      <p className="font-medium text-gray-900 text-sm mb-1">Underscore</p>
+                      <p className="text-xs text-gray-400 font-mono">order_date, customer_name</p>
+                    </button>
+                    <button onClick={() => setNamingStyle('camel')}
+                      className={`p-4 rounded-xl border-2 text-left transition-colors ${namingStyle === 'camel' ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                      <p className="font-medium text-gray-900 text-sm mb-1">Kamelnotation</p>
+                      <p className="text-xs text-gray-400 font-mono">orderDate, customerName</p>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-between">
+                <button onClick={() => setStep('target-schema')} className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">← Tillbaka</button>
+                <button onClick={createModel}
+                  className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">
+                  <Sparkles className="w-4 h-4" /> Generera med AI →
+                </button>
+              </div>
+            </div>
+          )}
           {step === 'sql' && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -541,7 +618,20 @@ export default function NewModelPage() {
                       </span>
                     </div>
                     <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3">
                       <span className="text-xs text-gray-400">{view.columns?.length ?? 0} kolumner</span>
+                      {previewData[i]?.count !== undefined && !previewData[i]?.loading && (
+                        <span className="text-xs text-green-600">{previewData[i].count.toLocaleString()} rader</span>
+                      )}
+                      <button onClick={() => previewView(i, view.sql)} disabled={previewData[i]?.loading}
+                        className="text-xs text-indigo-600 hover:underline disabled:opacity-50">
+                        {previewData[i]?.loading ? 'Laddar...' : 'Preview'}
+                      </button>
+                      <button onClick={() => setGeneratedViews(prev => prev.filter((_, j) => j !== i))}
+                        className="text-xs text-red-400 hover:text-red-600 hover:bg-red-50 px-2 py-0.5 rounded transition-colors">
+                        Ta bort
+                      </button>
+                    </div>
                       <button onClick={() => setGeneratedViews(prev => prev.filter((_, j) => j !== i))}
                         className="text-xs text-red-400 hover:text-red-600 hover:bg-red-50 px-2 py-0.5 rounded transition-colors">
                         Ta bort
@@ -551,6 +641,25 @@ export default function NewModelPage() {
                   {view.description && <div className="px-4 py-2 text-xs text-gray-500 border-b border-gray-100">{view.description}</div>}
                   <textarea value={view.sql} onChange={e => setGeneratedViews(prev => prev.map((v, j) => j === i ? { ...v, sql: e.target.value } : v))}
                     rows={8} className="w-full px-4 py-3 text-xs font-mono bg-gray-900 text-green-400 resize-none focus:outline-none" />
+                  {previewData[i]?.rows?.length > 0 && (
+                    <div className="overflow-x-auto border-t border-gray-200">
+                      <table className="w-full text-xs">
+                        <thead className="bg-gray-50">
+                          <tr>{previewData[i].columns.map(c => <th key={c} className="px-3 py-2 text-left text-gray-600 font-medium uppercase tracking-wider">{c}</th>)}</tr>
+                        </thead>
+                        <tbody>
+                          {previewData[i].rows.map((row, ri) => (
+                            <tr key={ri} className="border-t border-gray-100">
+                              {previewData[i].columns.map(c => <td key={c} className="px-3 py-2 text-gray-700">{String(row[c] ?? '')}</td>)}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  {previewData[i]?.error && (
+                    <div className="px-4 py-2 text-xs text-red-600 bg-red-50 border-t border-red-200">⚠️ {previewData[i].error}</div>
+                  )}
                 </div>
               ))}
               <div className="flex justify-end">
