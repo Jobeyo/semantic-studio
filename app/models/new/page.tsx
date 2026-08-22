@@ -244,6 +244,20 @@ export default function NewModelPage() {
   }
 
   return (
+    <>
+    {deletingViewIndex !== null && (
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40">
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6">
+          <h3 className="text-base font-semibold text-gray-900 mb-2">Ta bort vy</h3>
+          <p className="text-sm text-gray-500 mb-6">Ta bort <span className="font-medium text-gray-700">"{generatedViews[deletingViewIndex]?.displayName}"</span> från förslaget?</p>
+          <div className="flex gap-3 justify-end">
+            <button onClick={() => setDeletingViewIndex(null)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">Avbryt</button>
+            <button onClick={() => { setGeneratedViews(prev => prev.filter((_, j) => j !== deletingViewIndex)); setDeletingViewIndex(null); }}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700">Ta bort</button>
+          </div>
+        </div>
+      </div>
+    )}
     <div className="flex flex-col h-full">
       <div className="px-8 py-5 border-b border-gray-200 bg-white flex items-center gap-4">
         <Link href="/models" className="text-gray-400 hover:text-gray-600"><ArrowLeft className="w-5 h-5" /></Link>
@@ -683,5 +697,6 @@ export default function NewModelPage() {
         </div>
       </div>
     </div>
+    </>
   );
 }
