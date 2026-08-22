@@ -540,7 +540,13 @@ export default function NewModelPage() {
                         {view.type === 'fact' ? 'Faktatabell' : view.type === 'dimension' ? 'Dimension' : view.type === 'kpi' ? 'Nyckeltal' : 'Mått'}
                       </span>
                     </div>
-                    <span className="text-xs text-gray-400">{view.columns?.length ?? 0} kolumner</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-gray-400">{view.columns?.length ?? 0} kolumner</span>
+                      <button onClick={() => setGeneratedViews(prev => prev.filter((_, j) => j !== i))}
+                        className="text-xs text-red-400 hover:text-red-600 hover:bg-red-50 px-2 py-0.5 rounded transition-colors">
+                        Ta bort
+                      </button>
+                    </div>
                   </div>
                   {view.description && <div className="px-4 py-2 text-xs text-gray-500 border-b border-gray-100">{view.description}</div>}
                   <textarea value={view.sql} onChange={e => setGeneratedViews(prev => prev.map((v, j) => j === i ? { ...v, sql: e.target.value } : v))}
