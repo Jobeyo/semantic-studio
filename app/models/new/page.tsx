@@ -66,6 +66,7 @@ export default function NewModelPage() {
   const [generating, setGenerating] = useState(false);
   const [generatedViews, setGeneratedViews] = useState<GeneratedView[]>([]);
   const [confirmSaving, setConfirmSaving] = useState(false);
+  const [deletingViewIndex, setDeletingViewIndex] = useState<number | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
   const [previewData, setPreviewData] = useState<Record<number, {count: number; columns: string[]; rows: any[]; loading: boolean; error: string}>>({});
 
@@ -169,7 +170,7 @@ export default function NewModelPage() {
     setCreatingSchema(false);
   }
 
-  async function createModel() {
+  async function saveModel() {
     const schema = schemaAction === 'new' ? newSchemaName.trim() : selectedTargetSchema;
     if (!schema) { setErrorMsg('Välj eller skapa ett schema'); return; }
     setSaving(true);
@@ -179,10 +180,16 @@ export default function NewModelPage() {
       if (res.ok) {
         const model = await res.json();
         setCreatedModelId(model.id);
-        await generate(model.id, schema);
+        setStep('naming');
       }
     } catch {}
     setSaving(false);
+  }
+
+  async function generateWithNaming() {
+    const schema = schemaAction === 'new' ? newSchemaName.trim() : selectedTargetSchema;
+    if (!createdModelId || !schema) return;
+    await generate(createdModelId, schema);
   }
 
   async function generate(modelId: number, targetSchema: string) {
@@ -197,7 +204,7 @@ export default function NewModelPage() {
       if (res.ok) {
         const data = await res.json();
         setGeneratedViews(data.views);
-        setStep('naming');
+        setStep('sql');
       } else {
         const err = await res.json();
         setErrorMsg('Fel: ' + err.error);
@@ -526,7 +533,7 @@ export default function NewModelPage() {
               </div>
               <div className="flex items-center justify-between pt-2">
                 <button onClick={() => setStep('target-db')} className="text-sm text-gray-500 hover:text-gray-700">← Tillbaka</button>
-                <button onClick={createModel} disabled={saving || generating || (!selectedTargetSchema && !newSchemaName.trim())}
+                <button onClick={saveModel} disabled={saving || (!selectedTargetSchema && !newSchemaName.trim())}
                   className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
                   {(saving || generating) && <Loader2 className="w-4 h-4 animate-spin" />}
                   {saving ? 'Skapar modell...' : generating ? 'AI genererar...' : 'Fortsätt →'}
@@ -581,9 +588,9 @@ export default function NewModelPage() {
 
               <div className="flex justify-between">
                 <button onClick={() => setStep('target-schema')} className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">← Tillbaka</button>
-                <button onClick={createModel}
-                  className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">
-                  <Sparkles className="w-4 h-4" /> Generera med AI →
+                <button onClick={generateWithNaming} disabled={generating || saving}
+                  className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
+                  {generating ? <><Loader2 className="w-4 h-4 animate-spin" /> Genererar...</> : <><Sparkles className="w-4 h-4" /> Generera med AI →</>}
                 </button>
               </div>
             </div>
@@ -627,7 +634,7 @@ export default function NewModelPage() {
                         className="text-xs text-indigo-600 hover:underline disabled:opacity-50">
                         {previewData[i]?.loading ? 'Laddar...' : 'Preview'}
                       </button>
-                      <button onClick={() => setGeneratedViews(prev => prev.filter((_, j) => j !== i))}
+                      <button onClick={() => setDeletingViewIndex(i)}
                         className="text-xs text-red-400 hover:text-red-600 hover:bg-red-50 px-2 py-0.5 rounded transition-colors">
                         Ta bort
                       </button>

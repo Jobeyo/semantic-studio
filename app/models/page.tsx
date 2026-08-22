@@ -34,6 +34,7 @@ const sourceColors: Record<string, string> = {
 };
 
 export default function ModelsPage() {
+  const [deletingModel, setDeletingModel] = useState<{id: number; name: string} | null>(null);
   const { setHeader } = usePageHeader();
   const [models, setModels] = useState<Model[]>([]);
   useEffect(() => { setHeader('Semantiska modeller', `${models.length} modell${models.length !== 1 ? 'er' : ''}`); }, [models.length]);
@@ -42,7 +43,13 @@ export default function ModelsPage() {
   async function deleteModel(e: React.MouseEvent, modelId: number, modelName: string) {
     e.preventDefault();
     e.stopPropagation();
-    if (!confirm(`Ta bort modellen "${modelName}"? Vyerna i databasen påverkas inte, bara metadata i Studio.`)) return;
+    setDeletingModel({id: modelId, name: modelName});
+  }
+
+  async function confirmDeleteModel() {
+    if (!deletingModel) return;
+    const modelId = deletingModel.id;
+    setDeletingModel(null);
     await fetch(`/api/models/${modelId}`, { method: 'DELETE' });
     setModels(prev => prev.filter(m => m.id !== modelId));
   }
@@ -52,6 +59,20 @@ export default function ModelsPage() {
   }, []);
 
   return (
+    <>
+    {deletingModel && (
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40">
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6">
+          <h3 className="text-base font-semibold text-gray-900 mb-2">Ta bort modell</h3>
+          <p className="text-sm text-gray-500 mb-2">Ta bort <span className="font-medium text-gray-700">"{deletingModel.name}"</span>?</p>
+          <p className="text-sm text-amber-600 mb-6">Vyerna i databasen påverkas inte – bara metadata i Studio tas bort.</p>
+          <div className="flex gap-3 justify-end">
+            <button onClick={() => setDeletingModel(null)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">Avbryt</button>
+            <button onClick={confirmDeleteModel} className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700">Ta bort</button>
+          </div>
+        </div>
+      </div>
+    )}
     <div className="flex flex-col h-full">
       <div className="flex-1 overflow-y-auto p-8">
 
@@ -115,5 +136,6 @@ export default function ModelsPage() {
         )}
       </div>
     </div>
+    </>
   );
 }
