@@ -62,11 +62,12 @@ export default function TopBar() {
       </div>
       <div className="flex items-center gap-3">
         {activeLLM && (
-          <span className="text-xs text-gray-400 hidden sm:flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+          <span className="text-xs text-gray-400 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block flex-shrink-0" />
             {activeLLM}
           </span>
         )}
+
         <div className="flex items-center gap-1 border border-gray-200 rounded-lg overflow-hidden">
           <button onClick={() => setLanguage('sv')}
             className={`px-2 py-1.5 text-sm transition-colors ${language === 'sv' ? 'bg-indigo-600 text-white' : 'hover:bg-gray-50 text-gray-600'}`}
