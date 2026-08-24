@@ -199,6 +199,8 @@ export default function NewModelPage() {
       const body = {
         sourceSchema: selectedSourceSchema,
         targetSchema,
+        namingLanguage,
+        namingStyle,
         sourceDb: { host: srcHost, port: parseInt(srcPort), database: srcDatabase, user: srcUser, password: srcPassword, ssl: srcSsl },
       };
       const res = await fetch(`/api/models/${modelId}/generate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });

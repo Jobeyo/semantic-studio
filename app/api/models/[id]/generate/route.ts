@@ -70,7 +70,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (!session?.user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const { id } = await params;
     const body = await request.json();
-    const { sourceSchema, targetSchema } = body;
+    const { sourceSchema, targetSchema, namingLanguage, namingStyle } = body;
     console.log('Generate request:', { sourceSchema, targetSchema, modelId: id });
 
     const model = await prisma.semanticModel.findUnique({ where: { id: parseInt(id) } });
@@ -106,15 +106,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         role: 'user',
         content: `Du är en expert på semantiska datamodeller och Business Intelligence.
 
-Analysera följande databasschema och skapa ett semantiskt lager med vyer i schemat "${targetSchema}".
+NAMNKONVENTION - ABSOLUT KRAV:
+- displayName (affärsnamn): MÅSTE vara på ${namingLanguage === 'en' ? 'ENGLISH - e.g. Order Fact, Customer Location' : 'SVENSKA - t.ex. Avfallsfakt, Kundplats'}
+- name (tekniskt DB-namn): MÅSTE använda ${namingStyle === 'camel' ? 'camelCase - t.ex. orderFact, customerName' : 'underscore - t.ex. order_fact, customer_name'}
 
-# Databasschema (källschema: ${sourceSchema})
+Analysera följande databasschema och skapa ett semantiskt lager med vyer i schemat "${targetSchema}".
 ${truncatedSchema}
 
 REGLER:
 1. SQL ska referera EXAKT till tabellerna i källschemat ovan med schema-prefix: ${sourceSchema}.table_name
 2. Vyer ska skapas i målschemat: ${targetSchema}
-3. Använd svenska affärsnamn i displayName
+3. Följ STRIKT namnkonventionen ovan för displayName och name
 4. Identifiera fakta-, dimensions- och måttvyer
 
 KRITISKA REGLER FÖR JOIN-NYCKLAR:
