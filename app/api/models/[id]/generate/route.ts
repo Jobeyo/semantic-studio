@@ -95,12 +95,18 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const sessionData = await auth();
     const user = await prisma.user.findUnique({ where: { email: sessionData?.user?.email! } });
     const activeProvider = await prisma.lLMProvider.findFirst({
-      where: { orgId: user!.orgId, isDefault: true, type: 'claude' },
+      where: { orgId: user!.orgId, isDefault: true },
     });
+    const providerType = activeProvider?.type ?? 'claude';
+    const providerConfig = activeProvider?.config as any;
+    const modelName = providerConfig?.model ?? 'claude-sonnet-4-6';
     const apiKey = activeProvider?.apiKey || process.env.ANTHROPIC_API_KEY || '';
-    const anthropic = new Anthropic({ apiKey });
+    const anthropic = new Anthropic({
+      apiKey,
+      ...(providerType === 'berget' ? { baseURL: 'https://api.berget.ai/v1' } : {}),
+    });
     const msg = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: modelName,
       max_tokens: 16000,
       messages: [{
         role: 'user',
