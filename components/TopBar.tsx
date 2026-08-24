@@ -10,6 +10,16 @@ export default function TopBar() {
   const { language, setLanguage } = useLanguage();
 
   const name = (session?.user as any)?.name?.split(' ')[0] ?? session?.user?.email ?? 'Admin';
+  const [activeLLM, setActiveLLM] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch('/api/llm-providers')
+      .then(r => r.json())
+      .then((providers: any[]) => {
+        const def = providers.find(p => p.isDefault || p.is_default);
+        if (def) setActiveLLM(`${def.name}${def.config?.model ? ' · ' + def.config.model : ''}`);
+      }).catch(() => {});
+  }, []);
   const [subtitleCount, setSubtitleCount] = useState<string>('');
 
   useEffect(() => {
@@ -51,6 +61,12 @@ export default function TopBar() {
         {getSubtitle() && <p className="text-sm text-gray-500 mt-0.5">{getSubtitle()}</p>}
       </div>
       <div className="flex items-center gap-3">
+        {activeLLM && (
+          <span className="text-xs text-gray-400 hidden sm:flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block" />
+            {activeLLM}
+          </span>
+        )}
         <div className="flex items-center gap-1 border border-gray-200 rounded-lg overflow-hidden">
           <button onClick={() => setLanguage('sv')}
             className={`px-2 py-1.5 text-sm transition-colors ${language === 'sv' ? 'bg-indigo-600 text-white' : 'hover:bg-gray-50 text-gray-600'}`}
