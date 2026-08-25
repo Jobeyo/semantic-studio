@@ -396,8 +396,9 @@ export default function SettingsPage() {
                       ) : newProviderType === 'berget' ? (
                         <select value={newProviderModel} onChange={e => setNewProviderModel(e.target.value)}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                          <option value="Kimi-K3">Kimi-K3</option>
-                          <option value="Llama-3.3-70B-Instruct">Llama 3.3 70B</option>
+                          <option value="moonshotai/Kimi-K3">Kimi-K3</option>
+                          <option value="moonshotai/Kimi-K2.6">Kimi-K2.6</option>
+                          <option value="meta-llama/Llama-3.3-70B-Instruct">Llama 3.3 70B</option>
                           <option value="GLM-5.2">GLM 5.2</option>
                         </select>
                       ) : newProviderType === 'openai' ? (

@@ -73,6 +73,7 @@ export default function NewModelPage() {
 
   // Befintliga anslutningar
   const [existingConns, setExistingConns] = useState<any[]>([]);
+  const [hiddenConns, setHiddenConns] = useState<number[]>(() => { try { return JSON.parse(localStorage.getItem('hidden-connections') ?? '[]'); } catch { return []; } });
 
   useEffect(() => {
     fetch('/api/models').then(r => r.json()).then(models => {
@@ -322,13 +323,27 @@ export default function NewModelPage() {
               {existingConns.length > 0 && (
                 <div className="bg-indigo-50 border border-indigo-200 rounded-lg p-3">
                   <label className="block text-xs font-medium text-indigo-700 mb-1.5">Återanvänd befintlig anslutning</label>
-                  <select onChange={e => {
-                    const conn = existingConns.find(c => c.modelId === parseInt(e.target.value));
-                    if (conn) { setSrcHost(conn.host); setSrcPort(String(conn.port)); setSrcDatabase(conn.database); setSrcUser(conn.user); setSrcSsl(conn.ssl); setSrcTestResult(null); }
-                  }} defaultValue="" className="w-full px-3 py-2 border border-indigo-300 rounded-lg text-sm bg-white">
-                    <option value="">-- Välj befintlig anslutning --</option>
-                    {existingConns.map(c => <option key={c.modelId} value={c.modelId}>{c.modelName} ({c.host}:{c.port}/{c.database})</option>)}
-                  </select>
+                  <div className="flex gap-2">
+                    <select id="existing-conn-select" onChange={e => {
+                      const conn = existingConns.find(c => c.modelId === parseInt(e.target.value));
+                      if (conn) { setSrcHost(conn.host); setSrcPort(String(conn.port)); setSrcDatabase(conn.database); setSrcUser(conn.user); setSrcSsl(conn.ssl); setSrcTestResult(null); }
+                    }} defaultValue="" className="flex-1 px-3 py-2 border border-indigo-300 rounded-lg text-sm bg-white">
+                      <option value="">-- Välj befintlig anslutning --</option>
+                      {existingConns.filter(c => !hiddenConns.includes(c.modelId)).map(c => <option key={c.modelId} value={c.modelId}>{c.modelName} ({c.host}:{c.port}/{c.database})</option>)}
+                    </select>
+                    <button onClick={() => {
+                      const sel = document.getElementById('existing-conn-select') as HTMLSelectElement;
+                      const val = parseInt(sel?.value);
+                      if (val) {
+                        const next = [...hiddenConns, val];
+                        setHiddenConns(next);
+                        localStorage.setItem('hidden-connections', JSON.stringify(next));
+                        sel.value = '';
+                      }
+                    }} className="px-2 py-1 text-xs text-red-400 hover:text-red-600 border border-red-200 rounded-lg hover:bg-red-50">
+                      Ta bort
+                    </button>
+                  </div>
                 </div>
               )}
               <div className="grid grid-cols-2 gap-4">
@@ -379,7 +394,7 @@ export default function NewModelPage() {
               <div className="flex items-center justify-between pt-2">
                 <button onClick={() => setStep('info')} className="text-sm text-gray-500 hover:text-gray-700">← Tillbaka</button>
                 <div className="flex gap-3">
-                  <button onClick={testSourceConnection} disabled={srcTesting || !srcHost}
+                  <button onClick={testSourceConnection} disabled={srcTesting || !srcHost || !srcPassword}
                     className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50">
                     {srcTesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <TestTube className="w-4 h-4" />} Testa
                   </button>

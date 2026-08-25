@@ -4,6 +4,7 @@ import prisma from '@/lib/db';
 import { logChange } from '@/lib/changelog';
 import { Client } from 'pg';
 import Anthropic from '@anthropic-ai/sdk';
+import OpenAI from 'openai';
 
 async function getDbSchema(sourceType: string, config: any, sourceSchema: string): Promise<string> {
   if (sourceType === 'postgres') {
@@ -99,18 +100,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     });
     const providerType = activeProvider?.type ?? 'claude';
     const providerConfig = activeProvider?.config as any;
-    const modelName = providerConfig?.model ?? 'claude-sonnet-4-6';
+    const defaultModel: Record<string, string> = {
+      'claude': 'claude-sonnet-4-6',
+      'berget': 'moonshotai/Kimi-K3',
+      'openai': 'gpt-4o',
+      'ollama': 'llama3',
+    };
+    const modelName = providerConfig?.model || defaultModel[providerType] || 'claude-sonnet-4-6';
+    console.log('Provider:', providerType, 'Model:', modelName, 'Config:', JSON.stringify(providerConfig));
     const apiKey = activeProvider?.apiKey || process.env.ANTHROPIC_API_KEY || '';
-    const anthropic = new Anthropic({
-      apiKey,
-      ...(providerType === 'berget' ? { baseURL: 'https://api.berget.ai/v1' } : {}),
-    });
-    const msg = await anthropic.messages.create({
-      model: modelName,
-      max_tokens: 16000,
-      messages: [{
-        role: 'user',
-        content: `Du är en expert på semantiska datamodeller och Business Intelligence.
+    console.log('API Key (first 10):', apiKey?.slice(0, 10));
+    const prompt = `Du är en expert på semantiska datamodeller och Business Intelligence.
 
 NAMNKONVENTION - ABSOLUT KRAV:
 - displayName (affärsnamn): MÅSTE vara på ${namingLanguage === 'en' ? 'ENGLISH - e.g. Order Fact, Customer Location' : 'SVENSKA - t.ex. Avfallsfakt, Kundplats'}
@@ -120,40 +120,24 @@ Analysera följande databasschema och skapa ett semantiskt lager med vyer i sche
 ${truncatedSchema}
 
 REGLER:
-1. SQL ska referera EXAKT till tabellerna i källschemat ovan med schema-prefix: ${sourceSchema}.table_name
+1. SQL ska referera EXAKT till tabellerna i källschemat med schema-prefix: ${sourceSchema}.table_name
 2. Vyer ska skapas i målschemat: ${targetSchema}
 3. Följ STRIKT namnkonventionen ovan för displayName och name
 4. Identifiera fakta-, dimensions- och måttvyer
-
-KRITISKA REGLER FÖR JOIN-NYCKLAR:
-5. Använd BARA kolumner som faktiskt finns i källtabellerna - hitta INTE på kolumnnamn
-6. JOIN-nycklar måste vara kolumner som faktiskt finns i BÅDA tabellerna du joinar
-7. Kontrollera att alla kolumnnamn i SELECT och JOIN-villkor existerar i källschemat ovan
-8. Om en naturlig JOIN-nyckel inte finns, skapa INTE en konstgjord nyckel - gör istället separata vyer
-9. Faktavyer ska innehålla alla mätbara värden och alla naturliga nycklar från källtabellen
-10. Dimensionsvyer ska bara innehålla kolumner som faktiskt finns i källtabellen
-
-SQL-KVALITET:
-11. Testa mentalt att varje JOIN faktiskt kan producera rader - inte bara NULL
-12. Använd hellre enkla vyer utan JOIN än komplexa vyer med felaktiga JOINs
-13. Namnge vyer och kolumner konsekvent - samma begrepp ska ha samma namn överallt
-14. Håll JSON-svaret kompakt - max 8 vyer, max 15 kolumner per vy
-15. SURROGATNYCKLAR: Om en tabell saknar en tydlig primärnyckel, använd en befintlig unik kolumn eller md5()-hash av kombination av kolumner
-16. NULL-HANTERING: Om en JOIN-nyckel kan vara NULL i faktatabellen, lägg till WHERE-villkor för att filtrera bort NULL-rader ELLER uteslut dimensionen helt
-17. STAR SCHEMA: Faktatabellen ska ha direkta kopplingar till dimensioner via nycklar som FAKTISKT finns i källdata
-18. TESTA NYCKLAR: Innan du skapar en JOIN, verifiera mentalt att båda tabellerna har en gemensam kolumn med matchande värden
-19. UTESLUT DIMENSION: Om ingen naturlig koppling finns mellan fakta och dimension, skapa dimensionen som en fristående vy utan JOIN mot faktatabellen
-14. Håll JSON-svaret kompakt - max 8 vyer, max 15 kolumner per vy
+5. Använd BARA kolumner som faktiskt finns i källtabellerna
+6. JOIN-nycklar måste finnas i BÅDA tabellerna du joinar
+7. Använd hellre enkla vyer utan JOIN än komplexa vyer med felaktiga JOINs
+8. Max 8 vyer, max 15 kolumner per vy
 
 Returnera EXAKT följande JSON-format utan kommentarer:
 {
   "views": [
     {
       "name": "view_name",
-      "displayName": "Affärsnamn på svenska",
+      "displayName": "Affärsnamn",
       "description": "Beskrivning",
       "type": "fact|dimension|measure|kpi",
-      "sql": "CREATE OR REPLACE VIEW ${targetSchema}.\\"view_name\\" AS SELECT ...",
+      "sql": "CREATE OR REPLACE VIEW ${targetSchema}.\"view_name\" AS SELECT ...",
       "columns": [
         {
           "name": "column_name",
@@ -167,15 +151,32 @@ Returnera EXAKT följande JSON-format utan kommentarer:
       ]
     }
   ]
-}`,
-      }],
-    });
+}`;
 
-    const text = msg.content[0].type === 'text' ? msg.content[0].text : '';
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    let responseText = '';
+    if (providerType === 'berget' || providerType === 'openai') {
+      const openai = new OpenAI({ apiKey, baseURL: providerType === 'berget' ? 'https://api.berget.ai/v1' : undefined });
+      const completion = await openai.chat.completions.create({
+        model: modelName,
+        max_tokens: 16000,
+        messages: [{ role: 'user', content: prompt }],
+      });
+      const choice = completion.choices[0]?.message;
+      // Kimi-K3 använder reasoning_content - hämta från content eller reasoning_content
+      responseText = choice?.content ?? (choice as any)?.reasoning_content ?? '';
+    } else {
+      const anthropic = new Anthropic({ apiKey });
+      const msg = await anthropic.messages.create({
+        model: modelName,
+        max_tokens: 16000,
+        messages: [{ role: 'user', content: prompt }],
+      });
+      responseText = msg.content[0].type === 'text' ? msg.content[0].text : '';
+    }
+    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      console.error('AI response (no JSON found):', text.slice(0, 500));
-      return Response.json({ error: 'AI kunde inte generera schema: ' + text.slice(0, 200) }, { status: 500 });
+      console.error('AI response (no JSON found):', responseText.slice(0, 500));
+      return Response.json({ error: 'AI kunde inte generera schema: ' + responseText.slice(0, 200) }, { status: 500 });
     }
     
     let generated;
@@ -183,7 +184,7 @@ Returnera EXAKT följande JSON-format utan kommentarer:
       generated = JSON.parse(jsonMatch[0]);
     } catch (parseError) {
       console.error('JSON parse error:', (parseError as Error).message);
-      console.error('Raw text length:', text.length);
+      console.error('Raw text length:', responseText.length);
       // Försök begränsa antalet vyer om JSON är för långt
       return Response.json({ error: 'AI genererade för mycket data. Försök med ett schema med färre tabeller.' }, { status: 500 });
     }
