@@ -94,7 +94,7 @@ export default function ModelsPage() {
             {models.map(model => {
               console.log('sourceType:', model.sourceType, 'color:', sourceColors[model.sourceType]);
               return (
-              <Link key={model.id} href={`/models/${model.id}`}
+              <Link key={model.id} href={model._count?.views === 0 ? `/models/new?resume=${model.id}` : `/models/${model.id}`}
                 className="block bg-white border border-gray-200 rounded-xl p-5 hover:shadow-md transition-shadow group">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -105,6 +105,9 @@ export default function ModelsPage() {
                       <div className="flex items-center gap-2">
                         <h3 className="font-semibold text-gray-900">{model.name}</h3>
                         <span className={`text-xs px-2 py-0.5 rounded-full border ${statusColors[model.status]}`}>{statusLabels[model.status] ?? model.status}</span>
+                        {model._count?.views === 0 && (
+                          <span className="text-xs px-2 py-0.5 rounded-full border bg-gray-50 text-gray-400 border-gray-200">Ofärdig</span>
+                        )}
                       </div>
                       {model.description && <p className="text-sm text-gray-500 mt-0.5">{model.description}</p>}
                       <div className="flex items-center gap-4 mt-2 text-xs text-gray-400">

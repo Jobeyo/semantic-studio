@@ -13,6 +13,30 @@ interface GeneratedView {
 
 export default function NewModelPage() {
   const router = useRouter();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const resumeId = params.get('resume');
+    if (resumeId) {
+      const id = parseInt(resumeId);
+      setCreatedModelId(id);
+      // Hämta modellens schema från DB
+      fetch(`/api/models/${id}`)
+        .then(r => r.json())
+        .then(model => {
+          const cfg = model.sourceConfig as any;
+          if (cfg?.schema) {
+            setSelectedTargetSchema(cfg.schema);
+            setSchemaAction('existing');
+          }
+          // Återställ källdb-info
+          if (cfg?.host) { setSrcHost(cfg.host); setSrcPort(String(cfg.port ?? 5432)); setSrcDatabase(cfg.database ?? ''); setSrcUser(cfg.user ?? ''); setSrcSsl(cfg.ssl ?? false); }
+          // Återställ källschema
+          if (cfg?.sourceSchema) setSelectedSourceSchema(cfg.sourceSchema);
+        }).catch(() => {});
+      setStep('naming');
+    }
+  }, []);
   const [step, setStep] = useState<Step>('info');
   const [createdModelId, setCreatedModelId] = useState<number | null>(null);
 
@@ -178,7 +202,7 @@ export default function NewModelPage() {
     setSaving(true);
     const conn = getTargetConn();
     try {
-      const res = await fetch('/api/models', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, description, sourceType, sourceConfig: { ...conn, schema } }) });
+      const res = await fetch('/api/models', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, description, sourceType, sourceConfig: { ...conn, schema, sourceSchema: selectedSourceSchema } }) });
       if (res.ok) {
         const model = await res.json();
         setCreatedModelId(model.id);
