@@ -95,11 +95,10 @@ export default function ChangeLogPage() {
             <p className="text-sm mt-1">Händelser loggas automatiskt när du arbetar i Studio</p>
           </div>
         ) : (
-          <div className="max-w-3xl mx-auto space-y-8">
+          <div className="max-w-3xl space-y-8">
             {Object.entries(grouped).map(([date, dateLogs]) => (
               <div key={date}>
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="h-px flex-1 bg-gray-200" />
                   <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{date}</span>
                   <div className="h-px flex-1 bg-gray-200" />
                 </div>
