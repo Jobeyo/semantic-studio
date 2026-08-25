@@ -370,6 +370,16 @@ export default function NewModelPage() {
                   </div>
                 </div>
               )}
+              {existingConns.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 border-t border-gray-200" />
+                  <button onClick={() => { setSrcHost(''); setSrcPort(''); setSrcDatabase(''); setSrcUser(''); setSrcPassword(''); setSrcSsl(false); setSrcTestResult(null); }}
+                    className="text-xs text-indigo-600 hover:underline whitespace-nowrap px-2">
+                    + Ny anslutning
+                  </button>
+                  <div className="flex-1 border-t border-gray-200" />
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Host *</label>
@@ -400,7 +410,7 @@ export default function NewModelPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Lösenord</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Lösenord *</label>
                   <input type="password" value={srcPassword} onChange={e => setSrcPassword(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
@@ -498,7 +508,7 @@ export default function NewModelPage() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Lösenord</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Lösenord *</label>
                     <input type="password" value={tgtPassword} onChange={e => setTgtPassword(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                   </div>
