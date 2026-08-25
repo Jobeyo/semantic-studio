@@ -73,14 +73,14 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     const body = await request.json();
     const { targetSchema, namingLanguage, namingStyle } = body;
     // Använd sourceSchema från body eller från modellens config som fallback
+
+    const model = await prisma.semanticModel.findUnique({ where: { id: parseInt(id) } });
+    if (!model) return Response.json({ error: 'Not found' }, { status: 404 });
     const sourceSchema = body.sourceSchema || (model.sourceConfig as any)?.sourceSchema || '';
     if (!sourceSchema) {
       return Response.json({ error: 'Källschema saknas. Starta om wizarden.' }, { status: 400 });
     }
     console.log('Generate request:', { sourceSchema, targetSchema, modelId: id });
-
-    const model = await prisma.semanticModel.findUnique({ where: { id: parseInt(id) } });
-    if (!model) return Response.json({ error: 'Not found' }, { status: 404 });
 
     const config = model.sourceConfig as any;
     // Använd källdatabas om angiven, annars modellens anslutning
