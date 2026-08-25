@@ -34,11 +34,13 @@ export default function NewModelPage() {
           // Återställ källschema
           if (cfg?.sourceSchema) setSelectedSourceSchema(cfg.sourceSchema);
         }).catch(() => {});
+      setResumeMode(true);
       setStep('naming');
     }
   }, []);
   const [step, setStep] = useState<Step>('info');
   const [createdModelId, setCreatedModelId] = useState<number | null>(null);
+  const [resumeMode, setResumeMode] = useState(false);
 
   // Namnkonventioner
   const [namingLanguage, setNamingLanguage] = useState<'sv' | 'en'>('sv');
@@ -652,9 +654,47 @@ export default function NewModelPage() {
                 </div>
               </div>
 
+              {resumeMode && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 space-y-3">
+                  <p className="text-sm text-amber-700 font-medium">⚠️ Ange lösenord för att fortsätta</p>
+                  <p className="text-xs text-amber-600">Av säkerhetsskäl sparas inte lösenord. Ange lösenordet och välj källschema för att fortsätta.</p>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Lösenord källdatabas *</label>
+                      <div className="flex gap-2">
+                        <input type="password" value={srcPassword} onChange={e => setSrcPassword(e.target.value)}
+                          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                        <button onClick={() => loadSourceSchemas()} disabled={!srcPassword}
+                          className="px-3 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50">
+                          Hämta scheman
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Källschema *</label>
+                      {sourceSchemas.length > 0 ? (
+                        <select value={selectedSourceSchema} onChange={e => setSelectedSourceSchema(e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                          <option value="">-- Välj schema --</option>
+                          {sourceSchemas.filter(s => !['pg_catalog', 'information_schema', 'pg_toast'].includes(s)).map(s => (
+                            <option key={s} value={s}>{s}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input value={selectedSourceSchema} onChange={e => setSelectedSourceSchema(e.target.value)}
+                          placeholder="t.ex. core, public – klicka Hämta scheman"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono" />
+                      )}
+                    </div>
+                    {selectedTargetSchema && (
+                      <div className="text-xs text-gray-500">Målschema: <span className="font-mono font-medium">{selectedTargetSchema}</span></div>
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="flex justify-between">
                 <button onClick={() => setStep('target-schema')} className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">← Tillbaka</button>
-                <button onClick={generateWithNaming} disabled={generating || saving}
+                <button onClick={generateWithNaming} disabled={generating || saving || (resumeMode && (!srcPassword || !selectedSourceSchema))}
                   className="flex items-center gap-2 px-6 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
                   {generating ? <><Loader2 className="w-4 h-4 animate-spin" /> Genererar...</> : <><Sparkles className="w-4 h-4" /> Generera med AI →</>}
                 </button>
@@ -666,6 +706,15 @@ export default function NewModelPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900">Granska genererade vyer</h2>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs text-gray-400">Vald namnkonvention:</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full border bg-blue-50 text-blue-600 border-blue-200">
+                      {namingLanguage === 'sv' ? '🇸🇪 Svenska' : '🇬🇧 English'}
+                    </span>
+                    <span className="text-xs px-2 py-0.5 rounded-full border bg-purple-50 text-purple-600 border-purple-200">
+                      {namingStyle === 'camel' ? 'camelCase' : 'underscore_notation'}
+                    </span>
+                  </div>
                   <p className="text-sm text-gray-500 mt-0.5">{generatedViews.length} vyer genererades – granska och redigera SQL innan du sparar</p>
                 </div>
                 <div className="flex gap-3">

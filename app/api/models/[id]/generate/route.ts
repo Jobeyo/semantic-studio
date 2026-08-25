@@ -71,7 +71,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     if (!session?.user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const { id } = await params;
     const body = await request.json();
-    const { sourceSchema, targetSchema, namingLanguage, namingStyle } = body;
+    const { targetSchema, namingLanguage, namingStyle } = body;
+    // Använd sourceSchema från body eller från modellens config som fallback
+    const sourceSchema = body.sourceSchema || (model.sourceConfig as any)?.sourceSchema || '';
+    if (!sourceSchema) {
+      return Response.json({ error: 'Källschema saknas. Starta om wizarden.' }, { status: 400 });
+    }
     console.log('Generate request:', { sourceSchema, targetSchema, modelId: id });
 
     const model = await prisma.semanticModel.findUnique({ where: { id: parseInt(id) } });
@@ -86,6 +91,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       sourceDb.port = 55432;
     }
     console.log('Source DB config:', { host: sourceDb.host, port: sourceDb.port, database: sourceDb.database, user: sourceDb.user });
+    console.log('sourceDb password length:', sourceDb.password?.length ?? 0);
     const dbSchema = await getDbSchema(model.sourceType, sourceDb, sourceSchema);
     console.log('DB schema length:', dbSchema.length);
     console.log('DB schema preview:', dbSchema.slice(0, 1000));
