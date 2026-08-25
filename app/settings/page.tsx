@@ -18,7 +18,7 @@ export default function SettingsPage() {
   const { language, setLanguage } = useLanguage();
   const { data: session } = useSession();
   const isAdmin = (session?.user as any)?.role === 'admin';
-  const [activeSection, setActiveSection] = useState<Section>('password');
+  const [activeSection, setActiveSection] = useState<Section>('llm');
 
   // Lösenord
   const [showCurrent, setShowCurrent] = useState(false);
@@ -176,9 +176,9 @@ export default function SettingsPage() {
       <div className="flex-1 flex overflow-hidden">
         {/* Sidonav */}
         <div className="w-48 border-r border-gray-200 bg-white p-3 space-y-1 flex-shrink-0">
-          {sectionBtn('password', 'Lösenord', Lock)}
-          {isAdmin && sectionBtn('users', 'Användare', Users)}
           {sectionBtn('llm', 'AI-leverantörer', Sparkles)}
+          {isAdmin && sectionBtn('users', 'Användare', Users)}
+          {sectionBtn('password', 'Lösenord', Lock)}
         </div>
 
         {/* Innehåll */}
