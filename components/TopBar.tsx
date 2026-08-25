@@ -12,13 +12,20 @@ export default function TopBar() {
   const name = (session?.user as any)?.name?.split(' ')[0] ?? session?.user?.email ?? 'Admin';
   const [activeLLM, setActiveLLM] = useState<string | null>(null);
 
-  useEffect(() => {
+  function fetchLLM() {
     fetch('/api/llm-providers')
       .then(r => r.json())
       .then((providers: any[]) => {
-        const def = providers.find(p => p.isDefault || p.is_default);
+        const def = providers.find((p: any) => p.isDefault || p.is_default);
         if (def) setActiveLLM(`${def.name}${def.config?.model ? ' · ' + def.config.model : ''}`);
       }).catch(() => {});
+  }
+
+  useEffect(() => {
+    fetchLLM();
+    // Uppdatera var 5:e sekund så att byten slår igenom snabbt
+    const interval = setInterval(fetchLLM, 5000);
+    return () => clearInterval(interval);
   }, []);
   const [subtitleCount, setSubtitleCount] = useState<string>('');
 
