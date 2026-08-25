@@ -258,7 +258,7 @@ export default function SettingsPage() {
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">Namn *</label>
                       <input value={newName} onChange={e => setNewName(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white" />
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-600 mb-1">E-post *</label>
