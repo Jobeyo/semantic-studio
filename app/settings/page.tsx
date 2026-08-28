@@ -44,6 +44,26 @@ export default function SettingsPage() {
   const [addProviderError, setAddProviderError] = useState('');
   const [addProviderLoading, setAddProviderLoading] = useState(false);
   const [editingLLM, setEditingLLM] = useState<{id: number; name: string; type: string; apiKey: string; model: string; ollamaUrl: string} | null>(null);
+  const [dynamicModels, setDynamicModels] = useState<{id: string; name: string; created?: number}[]>([]);
+  const [loadingModels, setLoadingModels] = useState(false);
+
+  async function fetchDynamicModels(type: string, apiKey: string, providerId?: number) {
+    if (type === 'ollama') return;
+    setLoadingModels(true);
+    try {
+      const url = apiKey
+        ? `/api/llm-providers/models?type=${type}&apiKey=${encodeURIComponent(apiKey)}`
+        : `/api/llm-providers/models?type=${type}&providerId=${providerId}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        const models = data.models ?? [];
+        setDynamicModels(models);
+        localStorage.setItem(`llm-models-${type}`, JSON.stringify(models));
+      }
+    } catch {}
+    setLoadingModels(false);
+  }
 
   // Användare
   const [users, setUsers] = useState<any[]>([]);
@@ -464,7 +484,7 @@ export default function SettingsPage() {
                         )}
                         {isAdmin && (
                           <>
-                            <button onClick={() => setEditingLLM({ id: p.id, name: p.name, type: p.type, apiKey: '', model: (p.config as any)?.model ?? '', ollamaUrl: (p.config as any)?.url ?? 'http://ollama:11434' })}
+                            <button onClick={() => { setEditingLLM({ id: p.id, name: p.name, type: p.type, apiKey: '', model: (p.config as any)?.model ?? '', ollamaUrl: (p.config as any)?.url ?? 'http://ollama:11434' }); const saved = localStorage.getItem(`llm-models-${p.type}`); setDynamicModels(saved ? JSON.parse(saved) : []); }}
                               className="text-gray-400 hover:text-gray-600 p-1" title="Redigera">
                               <Settings2 className="w-4 h-4" />
                             </button>
@@ -487,7 +507,7 @@ export default function SettingsPage() {
       {/* Redigera LLM-modal */}
       {editingLLM && (
         <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center">
-          <div className="bg-white rounded-2xl shadow-xl p-6 w-96 space-y-4">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-[560px] max-h-[90vh] overflow-y-auto space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-gray-900">Redigera AI-leverantör</h3>
               <button onClick={() => setEditingLLM(null)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
@@ -500,45 +520,46 @@ export default function SettingsPage() {
             {editingLLM.type !== 'ollama' && (
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">API-nyckel (lämna tomt för att behålla)</label>
-                <input type="password" value={editingLLM.apiKey} onChange={e => setEditingLLM({...editingLLM, apiKey: e.target.value})}
-                  placeholder="••••••••" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+                <input type="password" value={editingLLM.apiKey} onChange={e => setEditingLLM({...editingLLM, apiKey: e.target.value})} placeholder="Lämna tomt för att behålla befintlig nyckel" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm" />
               </div>
             )}
-            {editingLLM.type === 'claude' && (
+            {editingLLM.type !== 'ollama' && (
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">Modell</label>
-                <select value={editingLLM.model} onChange={e => setEditingLLM({...editingLLM, model: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                  <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
-                  <option value="claude-opus-4-6">Claude Opus 4.6</option>
-                  <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
-                </select>
-              </div>
-            )}
-            {editingLLM.type === 'openai' && (
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Modell</label>
-                <select value={editingLLM.model} onChange={e => setEditingLLM({...editingLLM, model: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                  <option value="gpt-4o">GPT-4o</option>
-                  <option value="gpt-4o-mini">GPT-4o Mini</option>
-                  <option value="gpt-4-turbo">GPT-4 Turbo</option>
-                </select>
-              </div>
-            )}
-            {editingLLM.type === 'berget' && (
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Modell</label>
-                <select value={editingLLM.model} onChange={e => setEditingLLM({...editingLLM, model: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm">
-                  <option value="moonshotai/Kimi-K3">Kimi-K3</option>
-                  <option value="moonshotai/Kimi-K2.6">Kimi-K2.6</option>
-                  <option value="meta-llama/Llama-3.3-70B-Instruct">Llama 3.3 70B</option>
-                  <option value="mistralai/Mistral-Small-3.2-24B-Instruct-2506">Mistral Small 3.2</option>
-                  <option value="mistralai/Mistral-Medium-3.5-128B">Mistral Medium 3.5</option>
-                  <option value="zai-org/GLM-5.2">GLM 5.2</option>
-                  <option value="openai/gpt-oss-120b">GPT OSS 120B</option>
-                </select>
+                <div className="flex gap-2">
+                  <select value={editingLLM.model} onChange={e => setEditingLLM({...editingLLM, model: e.target.value})}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm">
+                    <option value="">-- Välj modell --</option>
+                    {dynamicModels.length > 0 ? dynamicModels.map(m => (
+                      <option key={m.id} value={m.id}>{m.name}{m.created ? ` (${new Date(m.created).toLocaleDateString('sv-SE', {year:'numeric',month:'short'})})` : ''}</option>
+                    )) : editingLLM.type === 'claude' ? (
+                      <>
+                        <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
+                        <option value="claude-opus-4-6">Claude Opus 4.6</option>
+                        <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
+                      </>
+                    ) : editingLLM.type === 'openai' ? (
+                      <>
+                        <option value="gpt-4o">GPT-4o</option>
+                        <option value="gpt-4o-mini">GPT-4o Mini</option>
+                        <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                      </>
+                    ) : editingLLM.type === 'berget' ? (
+                      <>
+                        <option value="moonshotai/Kimi-K3">Kimi-K3</option>
+                        <option value="meta-llama/Llama-3.3-70B-Instruct">Llama 3.3 70B</option>
+                        <option value="mistralai/Mistral-Small-3.2-24B-Instruct-2506">Mistral Small 3.2</option>
+                        <option value="mistralai/Mistral-Medium-3.5-128B">Mistral Medium 3.5</option>
+                        <option value="zai-org/GLM-5.2">GLM 5.2</option>
+                        <option value="openai/gpt-oss-120b">GPT OSS 120B</option>
+                      </>
+                    ) : null}
+                  </select>
+                  <button onClick={() => fetchDynamicModels(editingLLM.type, editingLLM.apiKey, editingLLM.id)} disabled={loadingModels}
+                    className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50 disabled:opacity-50 whitespace-nowrap">
+                    {loadingModels ? <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Hämtar...</> : <><RefreshCw className="w-3.5 h-3.5" /> Hämta</>}
+                  </button>
+                </div>
               </div>
             )}
             {editingLLM.type === 'ollama' && (
