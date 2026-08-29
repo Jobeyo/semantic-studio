@@ -139,6 +139,13 @@ export default function ConnectionsPage() {
           </div>
         ) : (
           <div className="space-y-4 max-w-4xl">
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+              <span className="text-amber-500 text-lg flex-shrink-0">⚠️</span>
+              <div className="text-sm text-amber-800">
+                <p className="font-medium mb-1">Säkerhetsrekommendation</p>
+                <p>Lösenord för databasanslutningar sparas för närvarande okrypterat. Rekommendationen är att använda en <span className="font-mono font-medium">read-only</span>-användare med begränsade rättigheter för att minimera risken vid obehörig åtkomst. Kryptering av lösenord finns på produktens roadmap.</p>
+              </div>
+            </div>
             {connections.map((conn, idx) => (
               <div key={conn.modelId} className="bg-white border border-gray-200 rounded-xl p-5">
                 <div className="flex items-start justify-between">
