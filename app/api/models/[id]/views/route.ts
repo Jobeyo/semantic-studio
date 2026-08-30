@@ -22,3 +22,17 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return Response.json({ error: (e as Error).message }, { status: 500 });
   }
 }
+
+export async function GET(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { id } = await params;
+    const views = await prisma.modelView.findMany({
+      where: { modelId: parseInt(id) },
+      include: { columns: true },
+      orderBy: { name: 'asc' },
+    });
+    return Response.json(views);
+  } catch (e) {
+    return Response.json({ error: (e as Error).message }, { status: 500 });
+  }
+}
