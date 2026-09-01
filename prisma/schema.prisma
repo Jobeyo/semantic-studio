@@ -61,6 +61,7 @@ model ModelView {
   type        String // fact, dimension, measure, kpi
   sql         String // Den SQL-fråga som skapar vyn
   columns     ViewColumn[]
+  qualityRules DataQualityRule[]
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 }
@@ -145,4 +146,16 @@ model GlossaryTerm {
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
   updatedBy  String?
+}
+
+model DataQualityRule {
+  id          Int       @id @default(autoincrement())
+  viewId      Int
+  view        ModelView @relation(fields: [viewId], references: [id], onDelete: Cascade)
+  columnName  String
+  ruleType    String    // not_null, unique, min, max, regex, custom_sql
+  ruleValue   String?   // värde för regeln tex regex-pattern eller min-värde
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
