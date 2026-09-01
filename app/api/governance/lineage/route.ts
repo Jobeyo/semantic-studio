@@ -47,6 +47,7 @@ export async function GET() {
           type: view.type,
           sourceTables,
           columnCount: view.columns.length,
+          columns: view.columns.map(c => ({ name: c.name, displayName: c.displayName, dataType: c.dataType, isKey: c.isKey, isMeasure: c.isMeasure })),
         };
       });
 
@@ -61,7 +62,15 @@ export async function GET() {
       };
     });
 
-    return Response.json({ lineage });
+    // Hämta rapporter från Klarify
+    let reports: any[] = [];
+    try {
+      const klarifyUrl = process.env.KLARIFY_URL ?? 'http://klarify:3000';
+      const res = await fetch(`${klarifyUrl}/api/reports`, { headers: { 'x-internal-request': 'true' } });
+      if (res.ok) reports = await res.json();
+    } catch {}
+
+    return Response.json({ lineage, reports });
   } catch (e) {
     console.error('Lineage API error:', e);
     return Response.json({ error: (e as Error).message }, { status: 500 });
