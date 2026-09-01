@@ -62,15 +62,7 @@ export async function GET() {
       };
     });
 
-    // Hämta rapporter från Klarify
-    let reports: any[] = [];
-    try {
-      const klarifyUrl = process.env.KLARIFY_URL ?? 'http://klarify:3000';
-      const res = await fetch(`${klarifyUrl}/api/reports`, { headers: { 'x-internal-key': process.env.INTERNAL_API_KEY ?? 'studio-internal' } });
-      if (res.ok) reports = await res.json();
-    } catch {}
-
-    return Response.json({ lineage, reports });
+    return Response.json({ lineage, reports: [] });
   } catch (e) {
     console.error('Lineage API error:', e);
     return Response.json({ error: (e as Error).message }, { status: 500 });

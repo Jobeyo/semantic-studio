@@ -108,22 +108,12 @@ export default function LineagePage() {
                   <h2 className="text-lg font-semibold text-gray-900">{selectedModel.name}</h2>
                   <p className="text-sm text-gray-500">{selectedModel.sourceDatabase} · {selectedModel.targetSchema}</p>
                 </div>
-                {pgReports.length > 0 && (
-                  <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm">
-                    <div className="flex items-center gap-2 font-medium text-green-700 mb-2">
-                      <BarChart2 className="w-4 h-4" />
-                      Rapporter i Klarify ({pgReports.length})
-                    </div>
-                    <div className="space-y-1 max-h-32 overflow-y-auto">
-                      {pgReports.map(r => (
-                        <div key={r.id} className="flex items-center gap-2 text-xs text-green-600">
-                          <BarChart className="w-3 h-3 flex-shrink-0" />
-                          {r.title}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                <a href={process.env.NEXT_PUBLIC_KLARIFY_URL ?? 'http://localhost:3000'} target="_blank"
+                  className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm hover:bg-green-100 transition-colors">
+                  <BarChart2 className="w-4 h-4 text-green-600" />
+                  <span className="font-medium text-green-700">Öppna Klarify</span>
+                  <span className="text-xs text-green-500 ml-1">för att se rapporter</span>
+                </a>
               </div>
 
               {/* Flödesdiagram */}
