@@ -66,7 +66,7 @@ export async function GET() {
     let reports: any[] = [];
     try {
       const klarifyUrl = process.env.KLARIFY_URL ?? 'http://klarify:3000';
-      const res = await fetch(`${klarifyUrl}/api/reports`, { headers: { 'x-internal-request': 'true' } });
+      const res = await fetch(`${klarifyUrl}/api/reports`, { headers: { 'x-internal-key': process.env.INTERNAL_API_KEY ?? 'studio-internal' } });
       if (res.ok) reports = await res.json();
     } catch {}
 
