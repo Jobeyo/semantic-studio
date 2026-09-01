@@ -40,6 +40,8 @@ model SemanticModel {
   sourceType    String // postgres, sqlserver, mysql, sqlite
   sourceConfig  Json // krypterad anslutningsinformation
   status        String         @default("draft") // draft, published, archived
+  owner         String?        // Ansvarig person
+  ownerEmail    String?        // E-post till ansvarig
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   views         ModelView[]
