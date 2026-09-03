@@ -46,13 +46,17 @@ export default function GlossaryPage() {
     setLoading(false);
   }
 
-  async function generate() {
+  const [showGenerateConfirm, setShowGenerateConfirm] = useState(false);
+  const [generateMode, setGenerateMode] = useState<'all' | 'missing'>('missing');
+
+  async function generate(mode: 'all' | 'missing' = 'missing') {
     if (!selectedModelId) { alert('Välj en modell'); return; }
+    setShowGenerateConfirm(false);
     setGenerating(true);
     const res = await fetch('/api/glossary/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ modelId: selectedModelId }),
+      body: JSON.stringify({ modelId: selectedModelId, mode }),
     });
     if (res.ok) await loadTerms(selectedModelId ?? undefined);
     else { const err = await res.json(); alert('Fel: ' + err.error); }
@@ -107,6 +111,7 @@ export default function GlossaryPage() {
   }[type] ?? 'bg-gray-50 text-gray-700 border-gray-200');
 
   return (
+    <>
     <div className="flex flex-col h-full">
       <div className="px-8 py-3 flex items-center gap-3">
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Sök term..."
@@ -127,7 +132,7 @@ export default function GlossaryPage() {
             <option value="">Alla modeller</option>
             {models.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
-  <button onClick={generate} disabled={generating || !selectedModelId}
+  <button onClick={() => { if (!selectedModelId) { alert('Välj en modell'); return; } setShowGenerateConfirm(true); }} disabled={generating || !selectedModelId}
             className="flex items-center gap-2 px-4 py-2 border border-indigo-200 text-indigo-600 rounded-lg text-sm hover:bg-indigo-50 disabled:opacity-50">
             {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
             Generera med AI
@@ -246,5 +251,35 @@ export default function GlossaryPage() {
         </div>
       )}
     </div>
+    {/* Generate confirm dialog */}
+    {showGenerateConfirm && (
+      <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
+        <div className="bg-white rounded-2xl shadow-xl p-6 w-[480px] space-y-4">
+          <h3 className="font-semibold text-gray-900 text-lg">Generera beskrivningar med AI</h3>
+          <p className="text-sm text-gray-600">Välj hur du vill hantera befintliga beskrivningar:</p>
+          <div className="space-y-2">
+            <label className="flex items-start gap-3 p-3 border rounded-xl cursor-pointer hover:bg-gray-50">
+              <input type="radio" name="genMode" value="missing" checked={generateMode === 'missing'} onChange={() => setGenerateMode('missing')} className="mt-0.5" />
+              <div>
+                <p className="font-medium text-sm text-gray-900">Fyll i saknade</p>
+                <p className="text-xs text-gray-500">Generera beskrivningar endast för termer som saknar definition. Befintliga bevaras.</p>
+              </div>
+            </label>
+            <label className="flex items-start gap-3 p-3 border rounded-xl cursor-pointer hover:bg-gray-50">
+              <input type="radio" name="genMode" value="all" checked={generateMode === 'all'} onChange={() => setGenerateMode('all')} className="mt-0.5" />
+              <div>
+                <p className="font-medium text-sm text-gray-900">Skriv över alla</p>
+                <p className="text-xs text-gray-500 text-red-500">Ersätter alla befintliga beskrivningar med nya AI-genererade.</p>
+              </div>
+            </label>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <button onClick={() => setShowGenerateConfirm(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">Avbryt</button>
+            <button onClick={() => generate(generateMode)} className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700">Generera</button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }

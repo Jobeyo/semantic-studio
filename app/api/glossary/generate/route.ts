@@ -8,7 +8,7 @@ export async function POST(request: NextRequest) {
     const session = await auth();
     if (!session?.user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const user = await prisma.user.findUnique({ where: { email: session.user.email! } });
-    const { modelId } = await request.json();
+    const { modelId, mode = 'missing' } = await request.json();
 
     const model = await prisma.semanticModel.findUnique({
       where: { id: modelId },
@@ -56,8 +56,19 @@ Returnera EXAKT detta JSON-format:
     if (!jsonMatch) return Response.json({ error: 'AI kunde inte generera glossary' }, { status: 500 });
     const generated = JSON.parse(jsonMatch[0]);
 
+    // Hämta befintliga termer om mode är 'missing'
+    const existingTerms = mode === 'missing'
+      ? await prisma.glossaryTerm.findMany({ where: { modelId }, select: { name: true } })
+      : [];
+    const existingNames = new Set(existingTerms.map((t: any) => t.name.toLowerCase()));
+
+    // Filtrera bort termer som redan finns om mode är 'missing'
+    const termsToSave = mode === 'missing'
+      ? generated.terms.filter((t: any) => !existingNames.has(t.name.toLowerCase()))
+      : generated.terms;
+
     // Spara termer i DB
-    const saved = await Promise.all(generated.terms.map((t: any) =>
+    const saved = await Promise.all(termsToSave.map((t: any) =>
       prisma.glossaryTerm.create({
         data: {
           orgId: user!.orgId,
