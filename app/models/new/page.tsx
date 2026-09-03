@@ -702,7 +702,7 @@ export default function NewModelPage() {
             </div>
           )}
           {step === 'sql' && (
-            <div className="space-y-4">
+            <div className="space-y-4 pb-20">
               <div className="flex items-center justify-between">
                 <div>
                   <h2 className="text-lg font-semibold text-gray-900">Granska genererade vyer</h2>
