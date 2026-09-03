@@ -222,7 +222,7 @@ export default function LineagePage() {
                       <X className="w-4 h-4" />
                     </button>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto" style={{paddingBottom: "32px"}}>
                     {selectedView.columns.map(col => (
                       <div key={col.name} className="flex items-center gap-2 p-2 bg-gray-50 rounded-lg text-xs">
                         {col.isKey ? (
