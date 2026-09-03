@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     await logChange({
       orgId, modelId: model.id,
       action: 'model_created', entityType: 'model', entityName: name,
-      details: `Modell skapad med källtyp ${sourceType}`,
+      details: `Modellutkast skapad med källtyp ${sourceType} (generering av semantiskt lager ej klar)`,
       actor: session.user?.email ?? 'unknown',
     });
     return Response.json(model, { status: 201 });
