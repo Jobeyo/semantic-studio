@@ -177,10 +177,15 @@ Returnera EXAKT följande JSON-format utan kommentarer:
         max_tokens: 16000,
         messages: [{ role: 'user', content: prompt }],
       });
-      responseText = msg.content[0].type === 'text' ? msg.content[0].text : '';
+      console.log('Claude msg:', JSON.stringify(msg).slice(0, 300));
+      // Hantera thinking-modeller - hitta text-blocket
+      const textBlock = msg.content.find((b: any) => b.type === 'text') as any;
+      responseText = textBlock ? textBlock.text : '';
     }
+    console.log('Raw response (first 500):', responseText.slice(0, 500));
     // Ta bort markdown-kodblock om Claude returnerar ```json ... ```
     const cleanText = responseText.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+    console.log('Clean text (first 500):', cleanText.slice(0, 500));
     const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       console.error('AI response (no JSON found):', responseText.slice(0, 500));
