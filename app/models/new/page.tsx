@@ -186,7 +186,7 @@ export default function NewModelPage() {
     try {
       const res = await fetch('/api/connections/schemas', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sourceType, ...conn, schemaName: newSchemaName.trim() }) });
       if (res.ok) {
-        setTargetSchemas(prev => [...prev, newSchemaName.trim()].sort());
+        setTargetSchemas(prev => [...new Set([...prev, newSchemaName.trim()])].sort());
         setSelectedTargetSchema(newSchemaName.trim());
         setSchemaAction('existing');
         setNewSchemaName('');
