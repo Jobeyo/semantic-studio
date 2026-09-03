@@ -179,7 +179,9 @@ Returnera EXAKT följande JSON-format utan kommentarer:
       });
       responseText = msg.content[0].type === 'text' ? msg.content[0].text : '';
     }
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+    // Ta bort markdown-kodblock om Claude returnerar ```json ... ```
+    const cleanText = responseText.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+    const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       console.error('AI response (no JSON found):', responseText.slice(0, 500));
       return Response.json({ error: 'AI kunde inte generera schema: ' + responseText.slice(0, 200) }, { status: 500 });
