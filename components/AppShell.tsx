@@ -35,6 +35,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   ];
 
   const [governanceOpen, setGovernanceOpen] = useState(pathname.startsWith('/governance') || pathname.startsWith('/glossary'));
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   if (pathname === '/login') {
     return (
@@ -111,7 +112,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               })}
             </div>
           )}
-          <button onClick={() => signOut()}
+          <button onClick={() => setShowLogoutConfirm(true)}
             className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-sm transition-colors text-slate-300 hover:bg-slate-800 hover:text-white">
             <LogOut className="w-4 h-4 flex-shrink-0" />
             Logga ut
@@ -134,6 +135,24 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <TopBar />
         {children}
       </div>
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-80 space-y-4">
+            <h3 className="font-semibold text-gray-900">Logga ut?</h3>
+            <p className="text-sm text-gray-500">Är du säker på att du vill logga ut?</p>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setShowLogoutConfirm(false)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">
+                Avbryt
+              </button>
+              <button onClick={() => signOut()}
+                className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium hover:bg-red-600">
+                Logga ut
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

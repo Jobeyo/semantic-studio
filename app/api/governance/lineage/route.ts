@@ -1,6 +1,26 @@
 import { auth } from '@/auth';
 import prisma from '@/lib/db';
 
+function extractColumnMappings(sql: string): { sourceCol: string; targetCol: string }[] {
+  const mappings: { sourceCol: string; targetCol: string }[] = [];
+  // Hitta SELECT-delen
+  const selectMatch = sql.match(/SELECT\s+([\s\S]+?)\s+FROM/i);
+  if (!selectMatch) return mappings;
+  
+  const selectPart = selectMatch[1];
+  const parts = selectPart.split(',');
+  
+  for (const part of parts) {
+    const trimmed = part.trim();
+    // Matcha: source AS target eller source.col AS target
+    const asMatch = trimmed.match(/(?:[\w.]+\.)?(\w+)\s+AS\s+["']?(\w+)["']?/i);
+    if (asMatch) {
+      mappings.push({ sourceCol: asMatch[1], targetCol: asMatch[2] });
+    }
+  }
+  return mappings;
+}
+
 function extractSourceTables(sql: string): string[] {
   // Extrahera tabellnamn från FROM och JOIN i SQL
   const tables: string[] = [];
@@ -40,14 +60,17 @@ export async function GET() {
 
       const views = model.views.map(view => {
         const sourceTables = extractSourceTables(view.sql ?? '');
+        const columnMappings = extractColumnMappings(view.sql ?? '');
         return {
           id: view.id,
           name: view.name,
           displayName: view.displayName,
           type: view.type,
+          sql: view.sql,
           sourceTables,
           columnCount: view.columns.length,
           columns: view.columns.map(c => ({ name: c.name, displayName: c.displayName, dataType: c.dataType, isKey: c.isKey, isMeasure: c.isMeasure })),
+          columnMappings,
         };
       });
 
