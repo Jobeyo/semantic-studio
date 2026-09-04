@@ -25,6 +25,7 @@ interface ViewNode {
   columnCount: number;
   columns: ColumnInfo[];
   columnMappings: ColumnMapping[];
+  reports?: { id: string; title: string }[];
 }
 
 interface ModelLineage {

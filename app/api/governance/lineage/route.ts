@@ -88,7 +88,7 @@ export async function GET() {
     // Hämta rapporter från Klarify
     const klarifyUrl = process.env.KLARIFY_URL ?? 'http://klarify:3000';
     console.log('Fetching reports from:', klarifyUrl);
-    const reportsByModel: Record<number, {id: string; title: string}[]> = {};
+    const reportsByModel: Record<number, {id: string; title: string; sourceViews: string[]}[]> = {};
     try {
       const res = await fetch(`${klarifyUrl}/api/reports`, {
         headers: { 'x-internal-key': process.env.INTERNAL_API_KEY ?? 'studio-internal' },
@@ -99,7 +99,11 @@ export async function GET() {
         for (const r of (Array.isArray(reports) ? reports : [])) {
           if (r.modelId) {
             if (!reportsByModel[r.modelId]) reportsByModel[r.modelId] = [];
-            reportsByModel[r.modelId].push({ id: r.id, title: r.title });
+            reportsByModel[r.modelId].push({ 
+              id: r.id, 
+              title: r.title,
+              sourceViews: r.sourceViews ?? [],
+            });
           }
         }
       } else {
@@ -111,6 +115,12 @@ export async function GET() {
 
     const lineageWithReports = lineage.map((m: any) => ({
       ...m,
+      views: m.views.map((v: any) => ({
+        ...v,
+        reports: (reportsByModel[m.id] ?? []).filter((r: any) => 
+          r.sourceViews.length === 0 || r.sourceViews.includes(v.name)
+        ),
+      })),
       reports: reportsByModel[m.id] ?? [],
     }));
 
