@@ -85,7 +85,36 @@ export async function GET() {
       };
     });
 
-    return Response.json({ lineage, reports: [] });
+    // Hämta rapporter från Klarify
+    const klarifyUrl = process.env.KLARIFY_URL ?? 'http://klarify:3000';
+    console.log('Fetching reports from:', klarifyUrl);
+    const reportsByModel: Record<number, {id: string; title: string}[]> = {};
+    try {
+      const res = await fetch(`${klarifyUrl}/api/reports`, {
+        headers: { 'x-internal-key': process.env.INTERNAL_API_KEY ?? 'studio-internal' },
+      });
+      if (res.ok) {
+        const reports = await res.json();
+        console.log('Reports fetched:', reports.length);
+        for (const r of (Array.isArray(reports) ? reports : [])) {
+          if (r.modelId) {
+            if (!reportsByModel[r.modelId]) reportsByModel[r.modelId] = [];
+            reportsByModel[r.modelId].push({ id: r.id, title: r.title });
+          }
+        }
+      } else {
+        console.log('Reports fetch failed:', res.status);
+      }
+    } catch (e) {
+      console.log('Reports fetch error:', e);
+    }
+
+    const lineageWithReports = lineage.map((m: any) => ({
+      ...m,
+      reports: reportsByModel[m.id] ?? [],
+    }));
+
+    return Response.json({ lineage: lineageWithReports });
   } catch (e) {
     console.error('Lineage API error:', e);
     return Response.json({ error: (e as Error).message }, { status: 500 });
