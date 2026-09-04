@@ -202,9 +202,9 @@ export default function LineagePage() {
                             <BarChart2 className="w-4 h-4 text-green-600 flex-shrink-0" />
                             <span className="font-semibold text-sm text-green-700">Rapporter</span>
                           </div>
-                          {(selectedModel.reports ?? []).length > 0 ? (
+                          {(view.reports ?? []).length > 0 ? (
                             <div className="space-y-1 max-h-20 overflow-y-auto">
-                              {(selectedModel.reports ?? []).map(r => (
+                              {(view.reports ?? []).map(r => (
                                 <a key={r.id} href={`${process.env.NEXT_PUBLIC_KLARIFY_URL ?? 'https://app.klarify.nu'}/reports/${r.id}`} target="_blank"
                                   className="flex items-center gap-1 text-xs text-green-600 hover:underline">
                                   <ExternalLink className="w-3 h-3 flex-shrink-0" />
