@@ -118,7 +118,7 @@ export async function GET() {
       views: m.views.map((v: any) => ({
         ...v,
         reports: (reportsByModel[m.id] ?? []).filter((r: any) => 
-          r.sourceViews && r.sourceViews.length > 0 && r.sourceViews.includes(v.name)
+          r.sourceViews && r.sourceViews.length > 0 && (console.log("Check:", v.name, r.sourceViews) || r.sourceViews.includes(v.name))
         ),
       })),
       reports: reportsByModel[m.id] ?? [],
