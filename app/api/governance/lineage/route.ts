@@ -113,6 +113,8 @@ export async function GET() {
       console.log('Reports fetch error:', e);
     }
 
+    console.log('Model IDs:', lineage.map((m: any) => typeof m.id + ':' + m.id));
+    console.log('reportsByModel keys:', Object.keys(reportsByModel));
     const lineageWithReports = lineage.map((m: any) => ({
       ...m,
       views: m.views.map((v: any) => ({
