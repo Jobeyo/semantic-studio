@@ -376,8 +376,8 @@ export default function NewModelPage() {
                 <div className="flex items-center gap-2">
                   <div className="flex-1 border-t border-gray-200" />
                   <button onClick={() => { setSrcHost(''); setSrcPort(''); setSrcDatabase(''); setSrcUser(''); setSrcPassword(''); setSrcSsl(false); setSrcTestResult(null); }}
-                    className="text-xs text-indigo-600 hover:underline whitespace-nowrap px-2">
-                    + Ny anslutning
+                    className="flex items-center gap-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg px-3 py-1.5 whitespace-nowrap transition-colors">
+                    <span className="text-base leading-none">+</span> Ny anslutning
                   </button>
                   <div className="flex-1 border-t border-gray-200" />
                 </div>
