@@ -9,8 +9,17 @@ function extractColumnMappings(sql: string): { sourceCol: string; targetCol: str
   const parts = selectMatch[1].split(',');
   for (const part of parts) {
     const trimmed = part.trim();
-    const asMatch = trimmed.match(/(?:[\w.]+\.)?(\w+)\s+AS\s+["']?(\w+)["']?/i);
-    if (asMatch) mappings.push({ sourceCol: asMatch[1], targetCol: asMatch[2] });
+    // Med alias: expr AS target
+    const asMatch = trimmed.match(/(?:[\w.]+\.)?([\w]+)\s+AS\s+["']?([\w]+)["']?/i);
+    if (asMatch) {
+      mappings.push({ sourceCol: asMatch[1], targetCol: asMatch[2] });
+      continue;
+    }
+    // Utan alias: table.col eller bare col
+    const bareMatch = trimmed.match(/^(?:[\w]+\.)?([\w]+)$/);
+    if (bareMatch) {
+      mappings.push({ sourceCol: bareMatch[1], targetCol: bareMatch[1] });
+    }
   }
   return mappings;
 }
