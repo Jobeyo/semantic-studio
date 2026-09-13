@@ -88,10 +88,18 @@ export default function LineageRow({ view, targetSchema, klarifyUrl }: Props) {
 
   const Field = ({ refKey, label, icon, colorClass }: { refKey: string; label: string; icon?: React.ReactNode; colorClass: string }) => {
     const isActive = activeField === refKey;
-    const isConnected = !!(activeField && lines.some(l =>
-      (l.fromKey === activeField && l.toKey === refKey) ||
-      (l.toKey === activeField && l.fromKey === refKey)
-    ));
+    // Transitiv spårning - hitta alla kopplade fält i hela kedjan
+    const getConnected = (key: string, visited = new Set<string>()): Set<string> => {
+      if (visited.has(key)) return visited;
+      visited.add(key);
+      for (const l of lines) {
+        if (l.fromKey === key && !visited.has(l.toKey)) getConnected(l.toKey, visited);
+        if (l.toKey === key && !visited.has(l.fromKey)) getConnected(l.fromKey, visited);
+      }
+      return visited;
+    };
+    const connectedKeys = activeField ? getConnected(activeField) : new Set<string>();
+    const isConnected = !!(activeField && !isActive && connectedKeys.has(refKey));
     const isDimmed = !!(activeField && !isActive && !isConnected);
     return (
       <div
@@ -133,7 +141,17 @@ export default function LineageRow({ view, targetSchema, klarifyUrl }: Props) {
       {/* SVG overlay */}
       <svg className="absolute inset-0 pointer-events-none z-20" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
         {lines.map((l, i) => {
-          const isActive = !!(activeField && (l.fromKey === activeField || l.toKey === activeField));
+          const getConnectedKeys = (key: string, visited = new Set<string>()): Set<string> => {
+            if (visited.has(key)) return visited;
+            visited.add(key);
+            for (const ln of lines) {
+              if (ln.fromKey === key && !visited.has(ln.toKey)) getConnectedKeys(ln.toKey, visited);
+              if (ln.toKey === key && !visited.has(ln.fromKey)) getConnectedKeys(ln.fromKey, visited);
+            }
+            return visited;
+          };
+          const connectedSet = activeField ? getConnectedKeys(activeField) : new Set<string>();
+          const isActive = !!(activeField && (connectedSet.has(l.fromKey) && connectedSet.has(l.toKey)));
           const isDimmed = !!(activeField && !isActive);
           const d = `M${l.x1},${l.y1} C${(l.x1 + 60)},${l.y1} ${(l.x2 - 60)},${l.y2} ${l.x2},${l.y2}`;
           return (
@@ -142,10 +160,10 @@ export default function LineageRow({ view, targetSchema, klarifyUrl }: Props) {
                 opacity={isDimmed ? 0.05 : 0.4}
                 strokeDasharray={l.dashed ? '4 2' : undefined} />
               {isActive && (
-                <path d={d} fill="none" stroke="#6366f1" strokeWidth={4}
+                <path d={d} fill="none" stroke="#6366f1" strokeWidth={2}
                   strokeLinecap="round"
                   strokeDasharray={l.dashed ? '6 3' : undefined}
-                  style={{ filter: 'drop-shadow(0 0 5px #6366f1) drop-shadow(0 0 10px #818cf8)' }} />
+                  opacity={0.7} />
               )}
             </g>
           );

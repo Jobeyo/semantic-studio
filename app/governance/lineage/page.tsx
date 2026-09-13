@@ -105,15 +105,16 @@ export default function LineagePage() {
                 <p className="text-sm text-gray-500">{selectedModel.sourceDatabase} → {selectedModel.targetSchema}</p>
               </div>
 
-              {/* Kolumnrubriker */}
-              <div className="flex items-center gap-3 text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">
-                <div className="w-44 text-center">Källtabeller</div>
-                <div className="w-10" />
-                <div className="w-44 text-center">Teknisk SQL-vy</div>
-                <div className="w-10" />
-                <div className="w-52 text-center">Affärsmodell</div>
-                <div className="w-10" />
-                <div className="w-40 text-center">Rapporter</div>
+              {/* Kolumnrubriker - matchar LineageRow grid: 1fr 20px 1fr 20px 1fr 20px 1fr */}
+              <div className="grid text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 gap-3 px-1"
+                style={{ gridTemplateColumns: '1fr 20px 1fr 20px 1fr 20px 1fr' }}>
+                <div className="text-center">Källtabeller</div>
+                <div />
+                <div className="text-center">Teknisk SQL-vy</div>
+                <div />
+                <div className="text-center">Affärsmodell</div>
+                <div />
+                <div className="text-center">Rapporter</div>
               </div>
 
               {selectedModel.views.map(view => (
