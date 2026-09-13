@@ -86,7 +86,7 @@ export async function GET() {
     });
 
     // Hämta rapporter från Klarify
-    const klarifyUrl = process.env.KLARIFY_URL ?? 'http://klarify:3000';
+    const klarifyUrl = process.env.KLARIFY_URL ?? (process.env.NODE_ENV === 'production' ? 'http://klarify:3000' : 'http://localhost:3000');
     console.log('Fetching reports from:', klarifyUrl);
     const reportsByModel: Record<number, {id: string; title: string; sourceViews: string[]; sourceColumns: {viewName: string; columnName: string}[]}[]> = {};
     try {
