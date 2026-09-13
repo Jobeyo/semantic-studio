@@ -4,22 +4,20 @@ import { Client } from 'pg';
 
 function extractColumnMappings(sql: string): { sourceCol: string; targetCol: string }[] {
   const mappings: { sourceCol: string; targetCol: string }[] = [];
-  const selectMatch = sql.match(/SELECT\s+([\s\S]+?)\s+FROM/i);
+  const normalized = sql.replace(/\n/g, ' ').replace(/\s+/g, ' ');
+  // Ta bort CREATE OR REPLACE VIEW ... AS prefix
+  const selectOnly = normalized.replace(/^.*?\bSELECT\b/i, 'SELECT');
+  const selectMatch = selectOnly.match(/SELECT\s+(.+?)\s+FROM\s/i);
   if (!selectMatch) return mappings;
   const parts = selectMatch[1].split(',');
   for (const part of parts) {
     const trimmed = part.trim();
-    // Med alias: expr AS target
-    const asMatch = trimmed.match(/(?:[\w.]+\.)?([\w]+)\s+AS\s+["']?([\w]+)["']?/i);
-    if (asMatch) {
-      mappings.push({ sourceCol: asMatch[1], targetCol: asMatch[2] });
-      continue;
-    }
-    // Utan alias: table.col eller bare col
-    const bareMatch = trimmed.match(/^(?:[\w]+\.)?([\w]+)$/);
-    if (bareMatch) {
-      mappings.push({ sourceCol: bareMatch[1], targetCol: bareMatch[1] });
-    }
+    // Med alias: hitta sista ordet före AS som är sourceCol
+    const asMatch = trimmed.match(/\b(\w+)\s+AS\s+(\w+)\s*$/i);
+    if (asMatch) { mappings.push({ sourceCol: asMatch[1], targetCol: asMatch[2] }); continue; }
+    // Utan alias: bare col eller table.col
+    const bareMatch = trimmed.match(/^(?:\w+\.)?([\w]+)$/);
+    if (bareMatch) mappings.push({ sourceCol: bareMatch[1], targetCol: bareMatch[1] });
   }
   return mappings;
 }
