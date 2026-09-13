@@ -20,7 +20,7 @@ const TYPE_COLORS: Record<string, { bg: string; border: string; text: string; li
   kpi:       { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700', light: 'bg-orange-100' },
 };
 
-type NodeKey = 'source' | 'sql' | 'biz' | 'report';
+type NodeKey = 'source' | 'sql' | 'biz' | `report:${string}`;
 
 interface Line { x1: number; y1: number; x2: number; y2: number; color: string; dashed?: boolean; }
 
@@ -78,12 +78,12 @@ export default function LineageRow({ view, targetSchema, klarifyUrl }: Props) {
     }
 
     // biz → report
-    if (expanded.has('biz') && expanded.has('report')) {
+    if (expanded.has('biz')) {
       for (const report of view.reports) {
         for (const sc of (report.sourceColumns ?? []).filter(sc => sc.viewName === view.name)) {
           const s = get(`biz:${sc.columnName}`);
           const t = get(`report:${report.id}:${sc.columnName}`);
-          if (s && t) newLines.push({ x1: s.right, y1: s.mid, x2: t.left, y2: t.mid, color: '#34d399', dashed: true });
+          if (s && t && expanded.has(`report:${report.id}`)) newLines.push({ x1: s.right, y1: s.mid, x2: t.left, y2: t.mid, color: '#34d399', dashed: true });
         }
       }
     }
@@ -235,7 +235,7 @@ export default function LineageRow({ view, targetSchema, klarifyUrl }: Props) {
           ) : view.reports.map(report => {
             const usedCols = (report.sourceColumns ?? []).filter(sc => sc.viewName === view.name);
             return (
-              <NodeBox key={report.id} id="report"
+              <NodeBox key={report.id} id={`report:${report.id}`}
                 title={report.title}
                 headerColor="text-green-700" borderColor="border-green-200" bgColor="bg-green-50"
                 fieldCount={usedCols.length}>
