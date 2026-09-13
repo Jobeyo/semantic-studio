@@ -12,6 +12,7 @@ interface ViewNode {
   reports: ReportInfo[];
   coreColumns?: Record<string, string[]>;
 }
+interface Line { x1: number; y1: number; x2: number; y2: number; color: string; dashed?: boolean; fromKey: string; toKey: string; }
 interface Props { view: ViewNode; targetSchema: string; klarifyUrl: string; }
 
 const TYPE_COLORS: Record<string, { bg: string; border: string; text: string; light: string }> = {
@@ -21,23 +22,19 @@ const TYPE_COLORS: Record<string, { bg: string; border: string; text: string; li
   kpi:       { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700', light: 'bg-orange-100' },
 };
 
-type NodeKey = 'source' | 'sql' | 'biz' | `report:${string}`;
-
-interface Line { x1: number; y1: number; x2: number; y2: number; color: string; dashed?: boolean; fromKey: string; toKey: string; }
+type NodeKey = 'source' | 'sql' | 'biz' | string;
 
 export default function LineageRow({ view, targetSchema, klarifyUrl }: Props) {
-  const [expanded, setExpanded] = useState<Set<NodeKey>>(new Set());
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [lines, setLines] = useState<Line[]>([]);
   const [activeField, setActiveField] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  // Refs för fält-element: nodeKey:fieldName → element
-  const fieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const fieldRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
   const colors = TYPE_COLORS[view.type] ?? { bg: 'bg-white', border: 'border-gray-200', text: 'text-gray-700', light: 'bg-gray-100' };
   const uniqueSources = [...new Set(view.sourceTables)];
 
-  const toggle = (node: NodeKey) => {
+  const toggle = (node: string) => {
     setExpanded(prev => {
       const next = new Set(prev);
       next.has(node) ? next.delete(node) : next.add(node);
@@ -45,127 +42,118 @@ export default function LineageRow({ view, targetSchema, klarifyUrl }: Props) {
     });
   };
 
-  const setRef = (key: string) => (el: HTMLDivElement | null) => {
-    fieldRefs.current[key] = el;
-  };
+  const getPos = useCallback((key: string, box: DOMRect) => {
+    const el = fieldRefs.current.get(key);
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { left: r.left - box.left, right: r.right - box.left, mid: r.top + r.height / 2 - box.top };
+  }, []);
 
   const recalcLines = useCallback(() => {
     if (!containerRef.current) return;
     const box = containerRef.current.getBoundingClientRect();
     const newLines: Line[] = [];
 
-    const get = (key: string) => {
-      const el = fieldRefs.current[key];
-      if (!el) return null;
-      const r = el.getBoundingClientRect();
-      return { left: r.left - box.left, right: r.right - box.left, mid: r.top + r.height / 2 - box.top };
-    };
-
-    // source → sql
     if (expanded.has('source') && expanded.has('sql')) {
       for (const m of view.columnMappings) {
-        const s = get(`source:${m.sourceCol}`);
-        const t = get(`sql:${m.targetCol}`);
-        if (s && t) newLines.push({ x1: s.right, y1: s.mid, x2: t.left, y2: t.mid, color: '#94a3b8', fromKey: `source:${m.sourceCol}`, toKey: `sql:${m.targetCol}` });
+        const s = getPos('source:' + m.sourceCol, box);
+        const t = getPos('sql:' + m.targetCol, box);
+        if (s && t) newLines.push({ x1: s.right, y1: s.mid, x2: t.left, y2: t.mid, color: '#f59e0b', fromKey: 'source:' + m.sourceCol, toKey: 'sql:' + m.targetCol });
       }
     }
-
-    // sql → biz
     if (expanded.has('sql') && expanded.has('biz')) {
       for (const col of view.columns) {
-        const s = get(`sql:${col.name}`);
-        const t = get(`biz:${col.name}`);
-        if (s && t) newLines.push({ x1: s.right, y1: s.mid, x2: t.left, y2: t.mid, color: '#818cf8', fromKey: `sql:${col.name}`, toKey: `biz:${col.name}` });
+        const s = getPos('sql:' + col.name, box);
+        const t = getPos('biz:' + col.name, box);
+        if (s && t) newLines.push({ x1: s.right, y1: s.mid, x2: t.left, y2: t.mid, color: '#818cf8', fromKey: 'sql:' + col.name, toKey: 'biz:' + col.name });
       }
     }
-
-    // biz → report
     if (expanded.has('biz')) {
       for (const report of view.reports) {
+        if (!expanded.has('report:' + report.id)) continue;
         for (const sc of (report.sourceColumns ?? []).filter(sc => sc.viewName === view.name)) {
-          const s = get(`biz:${sc.columnName}`);
-          const t = get(`report:${report.id}:${sc.columnName}`);
-          if (s && t && expanded.has(`report:${report.id}`)) newLines.push({ x1: s.right, y1: s.mid, x2: t.left, y2: t.mid, color: '#34d399', dashed: true, fromKey: `biz:${sc.columnName}`, toKey: `report:${report.id}:${sc.columnName}` });
+          const s = getPos('biz:' + sc.columnName, box);
+          const t = getPos('report:' + report.id + ':' + sc.columnName, box);
+          if (s && t) newLines.push({ x1: s.right, y1: s.mid, x2: t.left, y2: t.mid, color: '#34d399', dashed: true, fromKey: 'biz:' + sc.columnName, toKey: 'report:' + report.id + ':' + sc.columnName });
         }
       }
     }
-
     setLines(newLines);
-  }, [expanded, view]);
+  }, [expanded, view, getPos]);
 
   useEffect(() => {
-    // Liten delay för att DOM ska hinna uppdateras
-    const t = setTimeout(recalcLines, 50);
+    const t = setTimeout(recalcLines, 80);
     return () => clearTimeout(t);
   }, [recalcLines]);
 
-  const NodeBox = ({
-    id, title, subtitle, headerColor, borderColor, bgColor,
-    children, fieldCount
-  }: {
-    id: NodeKey; title: string; subtitle?: string;
-    headerColor: string; borderColor: string; bgColor: string;
-    children?: React.ReactNode; fieldCount?: number;
-  }) => {
-    const isOpen = expanded.has(id);
+  const Field = ({ refKey, label, icon, colorClass }: { refKey: string; label: string; icon?: React.ReactNode; colorClass: string }) => {
+    const isActive = activeField === refKey;
+    const isConnected = !!(activeField && lines.some(l =>
+      (l.fromKey === activeField && l.toKey === refKey) ||
+      (l.toKey === activeField && l.fromKey === refKey)
+    ));
+    const isDimmed = !!(activeField && !isActive && !isConnected);
     return (
-      <div className={`rounded-xl border ${borderColor} ${bgColor} shadow-sm overflow-hidden transition-all`}
-           style={{ minWidth: 160 }}>
-        <button onClick={() => toggle(id)}
-          className={`w-full flex items-center justify-between px-3 py-2.5 text-left ${headerColor} hover:opacity-90 transition-opacity`}>
-          <div className="flex-1 min-w-0">
-            <div className="font-semibold text-sm truncate">{title}</div>
-            {subtitle && <div className="text-xs opacity-70 truncate">{subtitle}</div>}
-            {fieldCount !== undefined && <div className="text-xs opacity-60">{fieldCount} fält</div>}
-          </div>
-          {isOpen ? <ChevronUp className="w-3.5 h-3.5 flex-shrink-0 ml-2 opacity-60" />
-                  : <ChevronDown className="w-3.5 h-3.5 flex-shrink-0 ml-2 opacity-60" />}
-        </button>
-        {isOpen && <div className="px-2 py-2 space-y-1 border-t border-current border-opacity-10">{children}</div>}
+      <div
+        ref={el => { if (el) fieldRefs.current.set(refKey, el); else fieldRefs.current.delete(refKey); }}
+        onClick={() => setActiveField(prev => prev === refKey ? null : refKey)}
+        className={[
+          'flex items-center gap-1.5 px-2 py-1 rounded text-xs font-mono cursor-pointer transition-all select-none mb-1',
+          colorClass,
+          isActive ? 'ring-2 ring-indigo-500 shadow-md scale-105 font-bold brightness-95' : '',
+          isConnected ? 'ring-1 ring-indigo-300 shadow-sm brightness-95' : '',
+          isDimmed ? 'opacity-15' : '',
+        ].filter(Boolean).join(' ')}
+      >
+        {icon}
+        <span className="truncate max-w-[130px]">{label}</span>
       </div>
     );
   };
 
-  const FieldPill = ({ refKey, label, icon, colorClass }: {
-    refKey: string; label: string;
-    icon?: React.ReactNode; colorClass: string;
-  }) => {
-    const isActive = activeField === refKey;
-    const isConnected = activeField && lines.some(l => 
-      (l.fromKey === activeField && l.toKey === refKey) || 
-      (l.toKey === activeField && l.fromKey === refKey)
-    );
-    const isDimmed = activeField && !isActive && !isConnected;
-    return (
-      <div ref={setRef(refKey)}
-        onClick={() => setActiveField(activeField === refKey ? null : refKey)}
-        className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-mono cursor-pointer transition-all
-          ${colorClass} 
-          ${isActive ? 'ring-2 ring-offset-1 ring-indigo-400 shadow-md scale-105' : ''}
-          ${isConnected ? 'ring-1 ring-offset-1 ring-indigo-300 shadow-sm' : ''}
-          ${isDimmed ? 'opacity-20' : ''}
-          whitespace-nowrap`}>
-        {icon}
-        <span className="truncate max-w-[140px]">{label}</span>
+  const NodeHeader = ({ id, title, sub, count, hColor, bColor, bgColor }: {
+    id: string; title: string; sub?: string; count?: number;
+    hColor: string; bColor: string; bgColor: string;
+  }) => (
+    <button onClick={() => toggle(id)}
+      className={['w-full flex items-center justify-between px-3 py-2.5 text-left rounded-xl border shadow-sm transition-all hover:shadow-md', bgColor, bColor, hColor].join(' ')}>
+      <div className="flex-1 min-w-0">
+        <div className="font-semibold text-sm truncate">{title}</div>
+        {sub && <div className="text-xs opacity-60 truncate">{sub}</div>}
+        {count !== undefined && <div className="text-xs opacity-50">{count} fält</div>}
       </div>
-    );
-  };
+      {expanded.has(id)
+        ? <ChevronUp className="w-3.5 h-3.5 flex-shrink-0 ml-2 opacity-50" />
+        : <ChevronDown className="w-3.5 h-3.5 flex-shrink-0 ml-2 opacity-50" />}
+    </button>
+  );
 
   return (
     <div ref={containerRef} className="relative py-2">
       {/* SVG overlay */}
-      <svg className="absolute inset-0 w-full pointer-events-none z-20"
-           style={{ height: '100%', overflow: 'visible' }}>
-        {lines.map((l, i) => (
-          <path key={i}
-            d={`M${l.x1},${l.y1} C${l.x1 + 50},${l.y1} ${l.x2 - 50},${l.y2} ${l.x2},${l.y2}`}
-            fill="none" stroke={l.color} strokeWidth="1.5" opacity="0.75"
-            strokeDasharray={l.dashed ? '4 2' : undefined} />
-        ))}
+      <svg className="absolute inset-0 pointer-events-none z-20" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
+        {lines.map((l, i) => {
+          const isActive = !!(activeField && (l.fromKey === activeField || l.toKey === activeField));
+          const isDimmed = !!(activeField && !isActive);
+          const d = `M${l.x1},${l.y1} C${(l.x1 + 60)},${l.y1} ${(l.x2 - 60)},${l.y2} ${l.x2},${l.y2}`;
+          return (
+            <g key={i}>
+              <path d={d} fill="none" stroke={l.color} strokeWidth={1.5}
+                opacity={isDimmed ? 0.05 : 0.4}
+                strokeDasharray={l.dashed ? '4 2' : undefined} />
+              {isActive && (
+                <path d={d} fill="none" stroke="#6366f1" strokeWidth={4}
+                  strokeLinecap="round"
+                  strokeDasharray={l.dashed ? '6 3' : undefined}
+                  style={{ filter: 'drop-shadow(0 0 5px #6366f1) drop-shadow(0 0 10px #818cf8)' }} />
+              )}
+            </g>
+          );
+        })}
       </svg>
 
       {/* 4-kolumns grid */}
-      <div className="grid gap-2 items-start" style={{ gridTemplateColumns: '1fr 24px 1fr 24px 1fr 24px 1fr' }}>
+      <div className="grid items-start gap-3" style={{ gridTemplateColumns: '1fr 20px 1fr 20px 1fr 20px 1fr' }}>
 
         {/* 1. Källtabeller */}
         <div className="space-y-2">
@@ -173,100 +161,103 @@ export default function LineageRow({ view, targetSchema, klarifyUrl }: Props) {
             const parts = table.split('.');
             const schema = parts.length > 1 ? parts[0] : '';
             const name = parts.length > 1 ? parts[1] : table;
+            const cols = (view.coreColumns ?? {})[table] ?? view.columnMappings.map(m => m.sourceCol);
             return (
-              <NodeBox key={table} id="source"
-                title={name} subtitle={schema || undefined}
-                headerColor="text-amber-800" borderColor="border-amber-200" bgColor="bg-amber-50"
-                fieldCount={view.columnMappings.length}>
-                {((view.coreColumns ?? {})[table] ?? view.columnMappings.map(m => m.sourceCol)).map((col: string, i: number) => (
-                  <FieldPill key={`${col}-${i}`}
-                    refKey={`source:${col}`}
-                    label={col}
-                    colorClass={`bg-amber-100 text-amber-800 ${view.columnMappings.find(m => m.sourceCol === col) ? '' : 'opacity-50'}`} />
-                ))}
-              </NodeBox>
+              <div key={table}>
+                <NodeHeader id="source" title={name} sub={schema || undefined} count={cols.length}
+                  hColor="text-amber-800" bColor="border-amber-200" bgColor="bg-amber-50" />
+                {expanded.has('source') && (
+                  <div className="mt-1 px-1">
+                    {cols.map((col: string, i: number) => (
+                      <Field key={col + i} refKey={'source:' + col} label={col}
+                        colorClass={'bg-amber-100 text-amber-800' + (view.columnMappings.find(m => m.sourceCol === col) ? '' : ' opacity-40')} />
+                    ))}
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
 
-        {/* Pil */}
-        <div className="flex items-center justify-center pt-4 text-gray-300">
-          <svg width="24" height="16"><path d="M0 8 L16 8 M10 4 L16 8 L10 12" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" /></svg>
+        {/* Pil 1 */}
+        <div className="flex items-start justify-center pt-3 text-gray-300">
+          <svg width="20" height="16"><path d="M0 8 L14 8 M8 4 L14 8 L8 12" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" /></svg>
         </div>
 
         {/* 2. SQL-vy */}
-        <NodeBox id="sql"
-          title={view.name} subtitle={targetSchema}
-          headerColor="text-gray-700" borderColor="border-gray-200" bgColor="bg-white"
-          fieldCount={view.columns.length}>
-          {/* Mappade kolumner */}
-          {view.columnMappings.map((m, i) => (
-            <FieldPill key={`${m.targetCol}-${i}`}
-              refKey={`sql:${m.targetCol}`}
-              label={m.targetCol}
-              colorClass="bg-gray-100 text-gray-700" />
-          ))}
-          {/* Omappade kolumner */}
-          {view.columns.filter(c => !view.columnMappings.find(m => m.targetCol === c.name)).map(col => (
-            <FieldPill key={col.name}
-              refKey={`sql:${col.name}`}
-              label={col.name}
-              colorClass="bg-gray-50 text-gray-400" />
-          ))}
-        </NodeBox>
+        <div>
+          <NodeHeader id="sql" title={view.name} sub={targetSchema} count={view.columns.length}
+            hColor="text-gray-700" bColor="border-gray-200" bgColor="bg-white" />
+          {expanded.has('sql') && (
+            <div className="mt-1 px-1">
+              {view.columnMappings.map((m, i) => (
+                <Field key={m.targetCol + i} refKey={'sql:' + m.targetCol} label={m.targetCol} colorClass="bg-gray-100 text-gray-700" />
+              ))}
+              {view.columns.filter(c => !view.columnMappings.find(m => m.targetCol === c.name)).map(col => (
+                <Field key={col.name} refKey={'sql:' + col.name} label={col.name} colorClass="bg-gray-50 text-gray-400" />
+              ))}
+            </div>
+          )}
+        </div>
 
-        {/* Pil */}
-        <div className="flex items-center justify-center pt-4 text-gray-300">
-          <svg width="24" height="16"><path d="M0 8 L16 8 M10 4 L16 8 L10 12" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" /></svg>
+        {/* Pil 2 */}
+        <div className="flex items-start justify-center pt-3 text-gray-300">
+          <svg width="20" height="16"><path d="M0 8 L14 8 M8 4 L14 8 L8 12" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" /></svg>
         </div>
 
         {/* 3. Affärsmodell */}
-        <NodeBox id="biz"
-          title={view.displayName || view.name}
-          subtitle={view.type}
-          headerColor={colors.text} borderColor={colors.border} bgColor={colors.bg}
-          fieldCount={view.columns.length}>
-          {view.columns.map(col => (
-            <FieldPill key={col.name}
-              refKey={`biz:${col.name}`}
-              label={col.displayName || col.name}
-              icon={col.isKey ? <Key className="w-3 h-3 text-yellow-500 flex-shrink-0" />
-                  : col.isMeasure ? <Hash className="w-3 h-3 text-green-500 flex-shrink-0" />
-                  : <div className="w-2.5 h-2.5 rounded-full bg-blue-400 flex-shrink-0" />}
-              colorClass={`${colors.light} ${colors.text}`} />
-          ))}
-        </NodeBox>
+        <div>
+          <NodeHeader id="biz" title={view.displayName || view.name} sub={view.type} count={view.columns.length}
+            hColor={colors.text} bColor={colors.border} bgColor={colors.bg} />
+          {expanded.has('biz') && (
+            <div className="mt-1 px-1">
+              {view.columns.map(col => (
+                <Field key={col.name} refKey={'biz:' + col.name}
+                  label={col.displayName || col.name}
+                  colorClass={colors.light + ' ' + colors.text}
+                  icon={col.isKey
+                    ? <Key className="w-3 h-3 text-yellow-500 flex-shrink-0" />
+                    : col.isMeasure
+                      ? <Hash className="w-3 h-3 text-green-500 flex-shrink-0" />
+                      : <div className="w-2.5 h-2.5 rounded-full bg-blue-400 flex-shrink-0" />}
+                />
+              ))}
+            </div>
+          )}
+        </div>
 
-        {/* Pil */}
-        <div className="flex items-center justify-center pt-4 text-gray-300">
-          <svg width="24" height="16"><path d="M0 8 L16 8 M10 4 L16 8 L10 12" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" /></svg>
+        {/* Pil 3 */}
+        <div className="flex items-start justify-center pt-3 text-gray-300">
+          <svg width="20" height="16"><path d="M0 8 L14 8 M8 4 L14 8 L8 12" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" /></svg>
         </div>
 
         {/* 4. Rapporter */}
         <div className="space-y-2">
           {view.reports.length === 0 ? (
-            <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-xs text-gray-400 italic">
-              Inga rapporter kopplade
-            </div>
+            <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-xs text-gray-400 italic">Inga rapporter</div>
           ) : view.reports.map(report => {
             const usedCols = (report.sourceColumns ?? []).filter(sc => sc.viewName === view.name);
+            const rid = 'report:' + report.id;
             return (
-              <NodeBox key={report.id} id={`report:${report.id}`}
-                title={report.title}
-                headerColor="text-green-700" borderColor="border-green-200" bgColor="bg-green-50"
-                fieldCount={usedCols.length}>
-                {usedCols.map(sc => (
-                  <FieldPill key={sc.columnName}
-                    refKey={`report:${report.id}:${sc.columnName}`}
-                    label={sc.columnName}
-                    icon={<BarChart2 className="w-3 h-3 text-green-500 flex-shrink-0" />}
-                    colorClass="bg-green-100 text-green-700" />
-                ))}
-                <a href={`${klarifyUrl}/space/1/report/${report.id}`} target="_blank"
-                  className="flex items-center gap-1 text-xs text-green-600 hover:underline pt-1">
-                  <ExternalLink className="w-3 h-3" /> Öppna i Klarify
-                </a>
-              </NodeBox>
+              <div key={report.id}>
+                <NodeHeader id={rid} title={report.title} count={usedCols.length}
+                  hColor="text-green-700" bColor="border-green-200" bgColor="bg-green-50" />
+                {expanded.has(rid) && (
+                  <div className="mt-1 px-1">
+                    {usedCols.map(sc => (
+                      <Field key={sc.columnName}
+                        refKey={'report:' + report.id + ':' + sc.columnName}
+                        label={sc.columnName}
+                        colorClass="bg-green-100 text-green-700"
+                        icon={<BarChart2 className="w-3 h-3 text-green-500 flex-shrink-0" />} />
+                    ))}
+                    <a href={klarifyUrl + '/space/1/report/' + report.id} target="_blank"
+                      className="flex items-center gap-1 text-xs text-green-600 hover:underline pt-1 px-1">
+                      <ExternalLink className="w-3 h-3" /> Öppna i Klarify
+                    </a>
+                  </div>
+                )}
+              </div>
             );
           })}
         </div>
