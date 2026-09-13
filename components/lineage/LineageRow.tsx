@@ -1,347 +1,260 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
-import { ChevronDown, ChevronRight, Table, Layers, Database, BarChart2, Key, Hash, ExternalLink } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { Table, Layers, Database, BarChart2, Key, Hash, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
 
-interface ColumnMapping {
-  sourceCol: string;
-  targetCol: string;
-}
-
-interface ColumnInfo {
-  name: string;
-  displayName: string;
-  dataType: string;
-  isKey: boolean;
-  isMeasure: boolean;
-}
-
-interface ReportInfo {
-  id: string;
-  title: string;
-  sourceViews: string[];
-  sourceColumns: { viewName: string; columnName: string }[];
-}
-
+interface ColumnMapping { sourceCol: string; targetCol: string; }
+interface ColumnInfo { name: string; displayName: string; dataType: string; isKey: boolean; isMeasure: boolean; }
+interface ReportInfo { id: string; title: string; sourceViews: string[]; sourceColumns: { viewName: string; columnName: string }[]; }
 interface ViewNode {
-  name: string;
-  displayName: string;
-  type: string;
-  sourceTables: string[];
-  columnCount: number;
-  columns: ColumnInfo[];
-  columnMappings: ColumnMapping[];
+  name: string; displayName: string; type: string;
+  sourceTables: string[]; columnCount: number;
+  columns: ColumnInfo[]; columnMappings: ColumnMapping[];
   reports: ReportInfo[];
 }
+interface Props { view: ViewNode; targetSchema: string; klarifyUrl: string; }
 
-interface LineageRowProps {
-  view: ViewNode;
-  targetSchema: string;
-  klarifyUrl: string;
-}
-
-const TYPE_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-  fact: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700' },
-  dimension: { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700' },
-  measure: { bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700' },
-  kpi: { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700' },
+const TYPE_COLORS: Record<string, { bg: string; border: string; text: string; light: string }> = {
+  fact:      { bg: 'bg-blue-50',   border: 'border-blue-200',   text: 'text-blue-700',   light: 'bg-blue-100' },
+  dimension: { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700', light: 'bg-purple-100' },
+  measure:   { bg: 'bg-green-50',  border: 'border-green-200',  text: 'text-green-700',  light: 'bg-green-100' },
+  kpi:       { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700', light: 'bg-orange-100' },
 };
 
-interface FieldRef {
-  [key: string]: HTMLDivElement | null;
-}
+type NodeKey = 'source' | 'sql' | 'biz' | 'report';
 
-export default function LineageRow({ view, targetSchema, klarifyUrl }: LineageRowProps) {
-  const [expanded, setExpanded] = useState(false);
-  const [svgLines, setSvgLines] = useState<{ x1: number; y1: number; x2: number; y2: number; color: string }[]>([]);
+interface Line { x1: number; y1: number; x2: number; y2: number; color: string; dashed?: boolean; }
+
+export default function LineageRow({ view, targetSchema, klarifyUrl }: Props) {
+  const [expanded, setExpanded] = useState<Set<NodeKey>>(new Set());
+  const [lines, setLines] = useState<Line[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
-  const sourceRefs = useRef<FieldRef>({});
-  const sqlRefs = useRef<FieldRef>({});
-  const bizRefs = useRef<FieldRef>({});
-  const reportRefs = useRef<FieldRef>({});
 
-  const colors = TYPE_COLORS[view.type] ?? { bg: 'bg-white', border: 'border-gray-200', text: 'text-gray-700' };
+  // Refs för fält-element: nodeKey:fieldName → element
+  const fieldRefs = useRef<Record<string, HTMLDivElement | null>>({});
+
+  const colors = TYPE_COLORS[view.type] ?? { bg: 'bg-white', border: 'border-gray-200', text: 'text-gray-700', light: 'bg-gray-100' };
   const uniqueSources = [...new Set(view.sourceTables)];
 
-  // Parsea källkolumner från sourceTables
-  const sourceTableCols: Record<string, string[]> = {};
-  for (const table of uniqueSources) {
-    const tableName = table.split('.').pop() ?? table;
-    sourceTableCols[tableName] = view.columnMappings.map(m => m.sourceCol);
-  }
+  const toggle = (node: NodeKey) => {
+    setExpanded(prev => {
+      const next = new Set(prev);
+      next.has(node) ? next.delete(node) : next.add(node);
+      return next;
+    });
+  };
 
-  useEffect(() => {
-    if (!expanded || !containerRef.current) return;
-    
-    const container = containerRef.current;
-    const containerRect = container.getBoundingClientRect();
-    const lines: { x1: number; y1: number; x2: number; y2: number; color: string }[] = [];
+  const setRef = (key: string) => (el: HTMLDivElement | null) => {
+    fieldRefs.current[key] = el;
+  };
 
-    // Rita linjer: sourceCol → targetCol (columnMappings)
-    for (const mapping of view.columnMappings) {
-      const sourceEl = sourceRefs.current[mapping.sourceCol];
-      const sqlEl = sqlRefs.current[mapping.targetCol];
-      
-      if (sourceEl && sqlEl) {
-        const s = sourceEl.getBoundingClientRect();
-        const t = sqlEl.getBoundingClientRect();
-        lines.push({
-          x1: s.right - containerRect.left,
-          y1: s.top + s.height / 2 - containerRect.top,
-          x2: t.left - containerRect.left,
-          y2: t.top + t.height / 2 - containerRect.top,
-          color: '#94a3b8',
-        });
-      }
+  const recalcLines = useCallback(() => {
+    if (!containerRef.current) return;
+    const box = containerRef.current.getBoundingClientRect();
+    const newLines: Line[] = [];
 
-      // SQL-vy → Affärsmodell (samma kolumnnamn)
-      const bizEl = bizRefs.current[mapping.targetCol];
-      if (sqlEl && bizEl) {
-        const s = sqlEl.getBoundingClientRect();
-        const t = bizEl.getBoundingClientRect();
-        lines.push({
-          x1: s.right - containerRect.left,
-          y1: s.top + s.height / 2 - containerRect.top,
-          x2: t.left - containerRect.left,
-          y2: t.top + t.height / 2 - containerRect.top,
-          color: '#818cf8',
-        });
+    const get = (key: string) => {
+      const el = fieldRefs.current[key];
+      if (!el) return null;
+      const r = el.getBoundingClientRect();
+      return { left: r.left - box.left, right: r.right - box.left, mid: r.top + r.height / 2 - box.top };
+    };
+
+    // source → sql
+    if (expanded.has('source') && expanded.has('sql')) {
+      for (const m of view.columnMappings) {
+        const s = get(`source:${m.sourceCol}`);
+        const t = get(`sql:${m.targetCol}`);
+        if (s && t) newLines.push({ x1: s.right, y1: s.mid, x2: t.left, y2: t.mid, color: '#94a3b8' });
       }
     }
 
-    // Rita linjer: Affärsmodell → Rapport (sourceColumns)
-    for (const report of view.reports) {
-      for (const sc of (report.sourceColumns ?? [])) {
-        if (sc.viewName === view.name) {
-          const bizEl = bizRefs.current[sc.columnName];
-          const repEl = reportRefs.current[`${report.id}-${sc.columnName}`];
-          if (bizEl && repEl) {
-            const s = bizEl.getBoundingClientRect();
-            const t = repEl.getBoundingClientRect();
-            lines.push({
-              x1: s.right - containerRect.left,
-              y1: s.top + s.height / 2 - containerRect.top,
-              x2: t.left - containerRect.left,
-              y2: t.top + t.height / 2 - containerRect.top,
-              color: '#34d399',
-            });
-          }
+    // sql → biz
+    if (expanded.has('sql') && expanded.has('biz')) {
+      for (const col of view.columns) {
+        const s = get(`sql:${col.name}`);
+        const t = get(`biz:${col.name}`);
+        if (s && t) newLines.push({ x1: s.right, y1: s.mid, x2: t.left, y2: t.mid, color: '#818cf8' });
+      }
+    }
+
+    // biz → report
+    if (expanded.has('biz') && expanded.has('report')) {
+      for (const report of view.reports) {
+        for (const sc of (report.sourceColumns ?? []).filter(sc => sc.viewName === view.name)) {
+          const s = get(`biz:${sc.columnName}`);
+          const t = get(`report:${report.id}:${sc.columnName}`);
+          if (s && t) newLines.push({ x1: s.right, y1: s.mid, x2: t.left, y2: t.mid, color: '#34d399', dashed: true });
         }
       }
     }
 
-    setSvgLines(lines);
+    setLines(newLines);
   }, [expanded, view]);
 
+  useEffect(() => {
+    // Liten delay för att DOM ska hinna uppdateras
+    const t = setTimeout(recalcLines, 50);
+    return () => clearTimeout(t);
+  }, [recalcLines]);
+
+  const NodeBox = ({
+    id, title, subtitle, headerColor, borderColor, bgColor,
+    children, fieldCount
+  }: {
+    id: NodeKey; title: string; subtitle?: string;
+    headerColor: string; borderColor: string; bgColor: string;
+    children?: React.ReactNode; fieldCount?: number;
+  }) => {
+    const isOpen = expanded.has(id);
+    return (
+      <div className={`rounded-xl border ${borderColor} ${bgColor} shadow-sm overflow-hidden transition-all`}
+           style={{ minWidth: 160 }}>
+        <button onClick={() => toggle(id)}
+          className={`w-full flex items-center justify-between px-3 py-2.5 text-left ${headerColor} hover:opacity-90 transition-opacity`}>
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-sm truncate">{title}</div>
+            {subtitle && <div className="text-xs opacity-70 truncate">{subtitle}</div>}
+            {fieldCount !== undefined && <div className="text-xs opacity-60">{fieldCount} fält</div>}
+          </div>
+          {isOpen ? <ChevronUp className="w-3.5 h-3.5 flex-shrink-0 ml-2 opacity-60" />
+                  : <ChevronDown className="w-3.5 h-3.5 flex-shrink-0 ml-2 opacity-60" />}
+        </button>
+        {isOpen && <div className="px-2 py-2 space-y-1 border-t border-current border-opacity-10">{children}</div>}
+      </div>
+    );
+  };
+
+  const FieldPill = ({ refKey, label, icon, colorClass }: {
+    refKey: string; label: string;
+    icon?: React.ReactNode; colorClass: string;
+  }) => (
+    <div ref={setRef(refKey)}
+      className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-mono ${colorClass} whitespace-nowrap`}>
+      {icon}
+      <span className="truncate max-w-[140px]">{label}</span>
+    </div>
+  );
+
   return (
-    <div ref={containerRef} className="relative">
-      {/* Collapsed rad */}
-      {!expanded && (
-        <div className="flex items-center gap-3 py-2">
-          {/* Källtabeller */}
-          <div className="flex flex-col gap-1 w-44">
-            {uniqueSources.map(table => {
-              const parts = table.split('.');
-              const schema = parts.length > 1 ? parts[0] : '';
-              const tableName = parts.length > 1 ? parts[1] : table;
-              return (
-                <div key={table} className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs shadow-sm">
-                  {schema && <div className="text-amber-400 font-mono text-xs">{schema}</div>}
-                  <div className="flex items-center gap-1.5">
-                    <Table className="w-3 h-3 text-amber-500 flex-shrink-0" />
-                    <span className="font-mono font-medium text-amber-800">{tableName}</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+    <div ref={containerRef} className="relative py-2">
+      {/* SVG overlay */}
+      <svg className="absolute inset-0 w-full pointer-events-none z-20"
+           style={{ height: '100%', overflow: 'visible' }}>
+        {lines.map((l, i) => (
+          <path key={i}
+            d={`M${l.x1},${l.y1} C${l.x1 + 50},${l.y1} ${l.x2 - 50},${l.y2} ${l.x2},${l.y2}`}
+            fill="none" stroke={l.color} strokeWidth="1.5" opacity="0.75"
+            strokeDasharray={l.dashed ? '4 2' : undefined} />
+        ))}
+      </svg>
 
-          <div className="flex items-center text-gray-300 flex-shrink-0">
-            <div className="w-4 border-t-2 border-dashed border-gray-300" />
-            <ChevronRight className="w-4 h-4" />
-          </div>
+      {/* 4-kolumns grid */}
+      <div className="grid gap-2 items-start" style={{ gridTemplateColumns: '1fr 24px 1fr 24px 1fr 24px 1fr' }}>
 
-          {/* SQL-vy */}
-          <div className="w-44">
-            <div className="bg-white border border-gray-200 rounded-xl px-3 py-2 shadow-sm">
-              <div className="text-xs text-gray-400 font-mono">{targetSchema}</div>
-              <div className="flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5 text-gray-400" />
-                <span className="font-mono text-sm font-medium text-gray-700">{view.name}</span>
-              </div>
-              <div className="text-xs text-gray-400">{view.columnCount} kolumner</div>
-            </div>
-          </div>
-
-          <div className="flex items-center text-gray-300 flex-shrink-0">
-            <div className="w-4 border-t-2 border-dashed border-gray-300" />
-            <ChevronRight className="w-4 h-4" />
-          </div>
-
-          {/* Affärsmodell */}
-          <div className="w-52">
-            <div className={`border rounded-xl px-3 py-2 shadow-sm ${colors.bg} ${colors.border}`}>
-              <div className={`flex items-center gap-1.5 ${colors.text}`}>
-                <Database className="w-3.5 h-3.5" />
-                <span className="font-semibold text-sm">{view.displayName || view.name}</span>
-              </div>
-              <div className={`text-xs opacity-70 ${colors.text}`}>{view.type} · {view.columnCount} fält</div>
-            </div>
-          </div>
-
-          <div className="flex items-center text-gray-300 flex-shrink-0">
-            <div className="w-4 border-t-2 border-dashed border-gray-300" />
-            <ChevronRight className="w-4 h-4" />
-          </div>
-
-          {/* Rapporter */}
-          <div className="w-40">
-            <div className="bg-green-50 border border-green-200 rounded-xl px-3 py-2 shadow-sm">
-              <div className="flex items-center gap-1.5 mb-1">
-                <BarChart2 className="w-3.5 h-3.5 text-green-600" />
-                <span className="text-xs font-semibold text-green-700">Rapporter ({view.reports.length})</span>
-              </div>
-              {view.reports.slice(0, 2).map(r => (
-                <div key={r.id} className="text-xs text-green-600 truncate">{r.title}</div>
-              ))}
-              {view.reports.length > 2 && <div className="text-xs text-green-400">+{view.reports.length - 2} till</div>}
-            </div>
-          </div>
-
-          {/* Expandera-knapp */}
-          <button onClick={() => setExpanded(true)}
-            className="ml-2 flex items-center gap-1 text-xs text-indigo-500 hover:text-indigo-700 border border-indigo-200 rounded-lg px-2 py-1 hover:bg-indigo-50">
-            <ChevronDown className="w-3.5 h-3.5" />
-            Expandera
-          </button>
+        {/* 1. Källtabeller */}
+        <div className="space-y-2">
+          {uniqueSources.map(table => {
+            const parts = table.split('.');
+            const schema = parts.length > 1 ? parts[0] : '';
+            const name = parts.length > 1 ? parts[1] : table;
+            return (
+              <NodeBox key={table} id="source"
+                title={name} subtitle={schema || undefined}
+                headerColor="text-amber-800" borderColor="border-amber-200" bgColor="bg-amber-50"
+                fieldCount={view.columnMappings.length}>
+                {view.columnMappings.map((m, i) => (
+                  <FieldPill key={`${m.sourceCol}-${i}`}
+                    refKey={`source:${m.sourceCol}`}
+                    label={m.sourceCol}
+                    colorClass="bg-amber-100 text-amber-800" />
+                ))}
+              </NodeBox>
+            );
+          })}
         </div>
-      )}
 
-      {/* Expanded - fältnivå med SVG-linjer */}
-      {expanded && (
-        <div className="border border-indigo-200 rounded-xl bg-white shadow-md overflow-hidden mb-4">
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 bg-indigo-50 border-b border-indigo-100">
-            <div className="flex items-center gap-2">
-              <Database className={`w-4 h-4 ${colors.text}`} />
-              <span className="font-semibold text-gray-900">{view.displayName || view.name}</span>
-              <span className={`text-xs px-2 py-0.5 rounded-full border ${colors.bg} ${colors.border} ${colors.text}`}>{view.type}</span>
-            </div>
-            <button onClick={() => { setExpanded(false); setSvgLines([]); }}
-              className="text-xs text-gray-400 hover:text-gray-600 border border-gray-200 rounded-lg px-2 py-1">
-              Komprimera
-            </button>
-          </div>
-
-          {/* Fältkolumner */}
-          <div className="grid grid-cols-4 gap-0 relative">
-            {/* SVG overlay */}
-            <svg className="absolute inset-0 w-full h-full pointer-events-none z-10"
-              style={{ overflow: 'visible' }}>
-              {svgLines.map((line, i) => (
-                <g key={i}>
-                  <path
-                    d={`M ${line.x1} ${line.y1} C ${line.x1 + 40} ${line.y1}, ${line.x2 - 40} ${line.y2}, ${line.x2} ${line.y2}`}
-                    fill="none"
-                    stroke={line.color}
-                    strokeWidth="1.5"
-                    strokeDasharray={line.color === '#34d399' ? '4 2' : 'none'}
-                    opacity="0.7"
-                  />
-                </g>
-              ))}
-            </svg>
-
-            {/* Kolumn 1: Källtabeller */}
-            <div className="border-r border-gray-100 p-4">
-              <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Källtabeller</div>
-              {uniqueSources.map(table => {
-                const tableName = table.split('.').pop() ?? table;
-                const schema = table.includes('.') ? table.split('.')[0] : '';
-                return (
-                  <div key={table} className="mb-4">
-                    <div className="text-xs font-semibold text-amber-600 mb-1 flex items-center gap-1">
-                      <Table className="w-3 h-3" />
-                      {schema && <span className="text-amber-400">{schema}.</span>}
-                      {tableName}
-                    </div>
-                    {view.columnMappings.map((m, i) => (
-                      <div key={`${m.sourceCol}-${i}`}
-                        ref={el => { sourceRefs.current[m.sourceCol] = el; }}
-                        className="flex items-center gap-1 py-1 px-2 text-xs text-gray-600 bg-amber-50 rounded mb-1 font-mono">
-                        {m.sourceCol}
-                      </div>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Kolumn 2: SQL-vy */}
-            <div className="border-r border-gray-100 p-4">
-              <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">SQL-vy · {targetSchema}</div>
-              <div className="text-xs font-semibold text-gray-600 mb-2 font-mono">{view.name}</div>
-              {view.columnMappings.map((m, i) => (
-                <div key={`${m.targetCol}-${i}`}
-                  ref={el => { sqlRefs.current[m.targetCol] = el; }}
-                  className="flex items-center gap-1 py-1 px-2 text-xs text-gray-600 bg-gray-50 rounded mb-1 font-mono">
-                  {m.targetCol}
-                </div>
-              ))}
-              {/* Kolumner utan mappning */}
-              {view.columns.filter(c => !view.columnMappings.find(m => m.targetCol === c.name)).map(col => (
-                <div key={col.name}
-                  ref={el => { sqlRefs.current[col.name] = el; }}
-                  className="flex items-center gap-1 py-1 px-2 text-xs text-gray-400 bg-gray-50 rounded mb-1 font-mono opacity-50">
-                  {col.name}
-                </div>
-              ))}
-            </div>
-
-            {/* Kolumn 3: Affärsmodell */}
-            <div className={`border-r border-gray-100 p-4 ${colors.bg}`}>
-              <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Affärsmodell</div>
-              <div className={`text-xs font-semibold mb-2 ${colors.text}`}>{view.displayName || view.name}</div>
-              {view.columns.map(col => (
-                <div key={col.name}
-                  ref={el => { bizRefs.current[col.name] = el; }}
-                  className={`flex items-center gap-1.5 py-1 px-2 text-xs rounded mb-1 ${colors.bg} border ${colors.border}`}>
-                  {col.isKey ? <Key className={`w-3 h-3 text-yellow-500 flex-shrink-0`} />
-                    : col.isMeasure ? <Hash className={`w-3 h-3 text-green-500 flex-shrink-0`} />
-                    : <div className="w-3 h-3 rounded-full bg-blue-400 flex-shrink-0" />}
-                  <span className={`${colors.text} truncate`}>{col.displayName || col.name}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Kolumn 4: Rapporter */}
-            <div className="p-4">
-              <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Rapporter</div>
-              {view.reports.length === 0 ? (
-                <div className="text-xs text-gray-400 italic">Inga rapporter</div>
-              ) : view.reports.map(report => {
-                const usedCols = (report.sourceColumns ?? []).filter(sc => sc.viewName === view.name);
-                return (
-                  <div key={report.id} className="mb-4">
-                    <a href={`${klarifyUrl}/space/1/report/${report.id}`} target="_blank"
-                      className="flex items-center gap-1 text-xs font-semibold text-green-700 hover:underline mb-1">
-                      <BarChart2 className="w-3 h-3" />
-                      {report.title}
-                      <ExternalLink className="w-2.5 h-2.5 ml-auto" />
-                    </a>
-                    {usedCols.map(sc => (
-                      <div key={sc.columnName}
-                        ref={el => { reportRefs.current[`${report.id}-${sc.columnName}`] = el; }}
-                        className="flex items-center gap-1 py-1 px-2 text-xs text-green-700 bg-green-50 border border-green-200 rounded mb-1 font-mono">
-                        {sc.columnName}
-                      </div>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+        {/* Pil */}
+        <div className="flex items-center justify-center pt-4 text-gray-300">
+          <svg width="24" height="16"><path d="M0 8 L16 8 M10 4 L16 8 L10 12" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" /></svg>
         </div>
-      )}
+
+        {/* 2. SQL-vy */}
+        <NodeBox id="sql"
+          title={view.name} subtitle={targetSchema}
+          headerColor="text-gray-700" borderColor="border-gray-200" bgColor="bg-white"
+          fieldCount={view.columns.length}>
+          {/* Mappade kolumner */}
+          {view.columnMappings.map((m, i) => (
+            <FieldPill key={`${m.targetCol}-${i}`}
+              refKey={`sql:${m.targetCol}`}
+              label={m.targetCol}
+              colorClass="bg-gray-100 text-gray-700" />
+          ))}
+          {/* Omappade kolumner */}
+          {view.columns.filter(c => !view.columnMappings.find(m => m.targetCol === c.name)).map(col => (
+            <FieldPill key={col.name}
+              refKey={`sql:${col.name}`}
+              label={col.name}
+              colorClass="bg-gray-50 text-gray-400" />
+          ))}
+        </NodeBox>
+
+        {/* Pil */}
+        <div className="flex items-center justify-center pt-4 text-gray-300">
+          <svg width="24" height="16"><path d="M0 8 L16 8 M10 4 L16 8 L10 12" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" /></svg>
+        </div>
+
+        {/* 3. Affärsmodell */}
+        <NodeBox id="biz"
+          title={view.displayName || view.name}
+          subtitle={view.type}
+          headerColor={colors.text} borderColor={colors.border} bgColor={colors.bg}
+          fieldCount={view.columns.length}>
+          {view.columns.map(col => (
+            <FieldPill key={col.name}
+              refKey={`biz:${col.name}`}
+              label={col.displayName || col.name}
+              icon={col.isKey ? <Key className="w-3 h-3 text-yellow-500 flex-shrink-0" />
+                  : col.isMeasure ? <Hash className="w-3 h-3 text-green-500 flex-shrink-0" />
+                  : <div className="w-2.5 h-2.5 rounded-full bg-blue-400 flex-shrink-0" />}
+              colorClass={`${colors.light} ${colors.text}`} />
+          ))}
+        </NodeBox>
+
+        {/* Pil */}
+        <div className="flex items-center justify-center pt-4 text-gray-300">
+          <svg width="24" height="16"><path d="M0 8 L16 8 M10 4 L16 8 L10 12" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" /></svg>
+        </div>
+
+        {/* 4. Rapporter */}
+        <div className="space-y-2">
+          {view.reports.length === 0 ? (
+            <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-xs text-gray-400 italic">
+              Inga rapporter kopplade
+            </div>
+          ) : view.reports.map(report => {
+            const usedCols = (report.sourceColumns ?? []).filter(sc => sc.viewName === view.name);
+            return (
+              <NodeBox key={report.id} id="report"
+                title={report.title}
+                headerColor="text-green-700" borderColor="border-green-200" bgColor="bg-green-50"
+                fieldCount={usedCols.length}>
+                {usedCols.map(sc => (
+                  <FieldPill key={sc.columnName}
+                    refKey={`report:${report.id}:${sc.columnName}`}
+                    label={sc.columnName}
+                    icon={<BarChart2 className="w-3 h-3 text-green-500 flex-shrink-0" />}
+                    colorClass="bg-green-100 text-green-700" />
+                ))}
+                <a href={`${klarifyUrl}/space/1/report/${report.id}`} target="_blank"
+                  className="flex items-center gap-1 text-xs text-green-600 hover:underline pt-1">
+                  <ExternalLink className="w-3 h-3" /> Öppna i Klarify
+                </a>
+              </NodeBox>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }
