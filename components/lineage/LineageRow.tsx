@@ -250,34 +250,48 @@ export default function LineageRow({ view, targetSchema, klarifyUrl }: Props) {
         </div>
 
         {/* 4. Rapporter */}
-        <div className="space-y-2">
+        <div>
           {view.reports.length === 0 ? (
             <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-xs text-gray-400 italic">Inga rapporter</div>
-          ) : view.reports.map(report => {
-            const usedCols = (report.sourceColumns ?? []).filter(sc => sc.viewName === view.name);
-            const rid = 'report:' + report.id;
-            return (
-              <div key={report.id}>
-                <NodeHeader id={rid} title={report.title} count={usedCols.length}
-                  hColor="text-green-700" bColor="border-green-200" bgColor="bg-green-50" />
-                {expanded.has(rid) && (
-                  <div className="mt-1 px-1">
-                    {usedCols.map(sc => (
-                      <Field key={sc.columnName}
-                        refKey={'report:' + report.id + ':' + sc.columnName}
-                        label={sc.columnName}
-                        colorClass="bg-green-100 text-green-700"
-                        icon={<BarChart2 className="w-3 h-3 text-green-500 flex-shrink-0" />} />
-                    ))}
-                    <a href={klarifyUrl + '/space/1/report/' + report.id} target="_blank"
-                      className="flex items-center gap-1 text-xs text-green-600 hover:underline pt-1 px-1">
-                      <ExternalLink className="w-3 h-3" /> Öppna i Klarify
-                    </a>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+          ) : (
+            <div>
+              {/* Samlad rapport-box */}
+              <NodeHeader id="reports-group" title={'Rapporter (' + view.reports.length + ')'}
+                hColor="text-green-700" bColor="border-green-200" bgColor="bg-green-50" />
+              {expanded.has('reports-group') && (
+                <div className="mt-1 space-y-1.5 px-1">
+                  {view.reports.map(report => {
+                    const usedCols = (report.sourceColumns ?? []).filter(sc => sc.viewName === view.name);
+                    const rid = 'report:' + report.id;
+                    return (
+                      <div key={report.id} className="border border-green-100 rounded-lg overflow-hidden group">
+                        <NodeHeader id={rid} title={report.title} count={usedCols.length}
+                          hColor="text-green-700" bColor="border-0" bgColor="bg-green-50" />
+                        {expanded.has(rid) && (
+                          <div className="px-2 pb-2">
+                            {usedCols.map(sc => (
+                              <Field key={sc.columnName}
+                                refKey={'report:' + report.id + ':' + sc.columnName}
+                                label={sc.columnName}
+                                colorClass="bg-green-100 text-green-700"
+                                icon={<BarChart2 className="w-3 h-3 text-green-500 flex-shrink-0" />} />
+                            ))}
+                            <div className="flex justify-end pt-1">
+                              <a href={klarifyUrl + '/space/1/report/' + report.id} target="_blank"
+                                className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-xs text-green-500 hover:text-green-700 px-1"
+                                title="Öppna i Klarify">
+                                <ExternalLink className="w-3 h-3" />
+                              </a>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
