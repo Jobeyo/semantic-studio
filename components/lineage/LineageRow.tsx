@@ -264,8 +264,8 @@ export default function LineageRow({ view, targetSchema, klarifyUrl }: LineageRo
                       {schema && <span className="text-amber-400">{schema}.</span>}
                       {tableName}
                     </div>
-                    {view.columnMappings.map(m => (
-                      <div key={m.sourceCol}
+                    {view.columnMappings.map((m, i) => (
+                      <div key={`${m.sourceCol}-${i}`}
                         ref={el => { sourceRefs.current[m.sourceCol] = el; }}
                         className="flex items-center gap-1 py-1 px-2 text-xs text-gray-600 bg-amber-50 rounded mb-1 font-mono">
                         {m.sourceCol}
@@ -280,8 +280,8 @@ export default function LineageRow({ view, targetSchema, klarifyUrl }: LineageRo
             <div className="border-r border-gray-100 p-4">
               <div className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">SQL-vy · {targetSchema}</div>
               <div className="text-xs font-semibold text-gray-600 mb-2 font-mono">{view.name}</div>
-              {view.columnMappings.map(m => (
-                <div key={m.targetCol}
+              {view.columnMappings.map((m, i) => (
+                <div key={`${m.targetCol}-${i}`}
                   ref={el => { sqlRefs.current[m.targetCol] = el; }}
                   className="flex items-center gap-1 py-1 px-2 text-xs text-gray-600 bg-gray-50 rounded mb-1 font-mono">
                   {m.targetCol}
