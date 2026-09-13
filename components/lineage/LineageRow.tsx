@@ -10,6 +10,7 @@ interface ViewNode {
   sourceTables: string[]; columnCount: number;
   columns: ColumnInfo[]; columnMappings: ColumnMapping[];
   reports: ReportInfo[];
+  coreColumns?: Record<string, string[]>;
 }
 interface Props { view: ViewNode; targetSchema: string; klarifyUrl: string; }
 
@@ -177,11 +178,11 @@ export default function LineageRow({ view, targetSchema, klarifyUrl }: Props) {
                 title={name} subtitle={schema || undefined}
                 headerColor="text-amber-800" borderColor="border-amber-200" bgColor="bg-amber-50"
                 fieldCount={view.columnMappings.length}>
-                {view.columnMappings.map((m, i) => (
-                  <FieldPill key={`${m.sourceCol}-${i}`}
-                    refKey={`source:${m.sourceCol}`}
-                    label={m.sourceCol}
-                    colorClass="bg-amber-100 text-amber-800" />
+                {((view.coreColumns ?? {})[table] ?? view.columnMappings.map(m => m.sourceCol)).map((col: string, i: number) => (
+                  <FieldPill key={`${col}-${i}`}
+                    refKey={`source:${col}`}
+                    label={col}
+                    colorClass={`bg-amber-100 text-amber-800 ${view.columnMappings.find(m => m.sourceCol === col) ? '' : 'opacity-50'}`} />
                 ))}
               </NodeBox>
             );
