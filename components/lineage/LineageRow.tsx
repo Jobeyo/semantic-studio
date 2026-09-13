@@ -22,11 +22,12 @@ const TYPE_COLORS: Record<string, { bg: string; border: string; text: string; li
 
 type NodeKey = 'source' | 'sql' | 'biz' | `report:${string}`;
 
-interface Line { x1: number; y1: number; x2: number; y2: number; color: string; dashed?: boolean; }
+interface Line { x1: number; y1: number; x2: number; y2: number; color: string; dashed?: boolean; fromKey: string; toKey: string; }
 
 export default function LineageRow({ view, targetSchema, klarifyUrl }: Props) {
   const [expanded, setExpanded] = useState<Set<NodeKey>>(new Set());
   const [lines, setLines] = useState<Line[]>([]);
+  const [activeField, setActiveField] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Refs för fält-element: nodeKey:fieldName → element
@@ -64,7 +65,7 @@ export default function LineageRow({ view, targetSchema, klarifyUrl }: Props) {
       for (const m of view.columnMappings) {
         const s = get(`source:${m.sourceCol}`);
         const t = get(`sql:${m.targetCol}`);
-        if (s && t) newLines.push({ x1: s.right, y1: s.mid, x2: t.left, y2: t.mid, color: '#94a3b8' });
+        if (s && t) newLines.push({ x1: s.right, y1: s.mid, x2: t.left, y2: t.mid, color: '#94a3b8', fromKey: `source:${m.sourceCol}`, toKey: `sql:${m.targetCol}` });
       }
     }
 
@@ -73,7 +74,7 @@ export default function LineageRow({ view, targetSchema, klarifyUrl }: Props) {
       for (const col of view.columns) {
         const s = get(`sql:${col.name}`);
         const t = get(`biz:${col.name}`);
-        if (s && t) newLines.push({ x1: s.right, y1: s.mid, x2: t.left, y2: t.mid, color: '#818cf8' });
+        if (s && t) newLines.push({ x1: s.right, y1: s.mid, x2: t.left, y2: t.mid, color: '#818cf8', fromKey: `sql:${col.name}`, toKey: `biz:${col.name}` });
       }
     }
 
@@ -83,7 +84,7 @@ export default function LineageRow({ view, targetSchema, klarifyUrl }: Props) {
         for (const sc of (report.sourceColumns ?? []).filter(sc => sc.viewName === view.name)) {
           const s = get(`biz:${sc.columnName}`);
           const t = get(`report:${report.id}:${sc.columnName}`);
-          if (s && t && expanded.has(`report:${report.id}`)) newLines.push({ x1: s.right, y1: s.mid, x2: t.left, y2: t.mid, color: '#34d399', dashed: true });
+          if (s && t && expanded.has(`report:${report.id}`)) newLines.push({ x1: s.right, y1: s.mid, x2: t.left, y2: t.mid, color: '#34d399', dashed: true, fromKey: `biz:${sc.columnName}`, toKey: `report:${report.id}:${sc.columnName}` });
         }
       }
     }
@@ -127,13 +128,27 @@ export default function LineageRow({ view, targetSchema, klarifyUrl }: Props) {
   const FieldPill = ({ refKey, label, icon, colorClass }: {
     refKey: string; label: string;
     icon?: React.ReactNode; colorClass: string;
-  }) => (
-    <div ref={setRef(refKey)}
-      className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-mono ${colorClass} whitespace-nowrap`}>
-      {icon}
-      <span className="truncate max-w-[140px]">{label}</span>
-    </div>
-  );
+  }) => {
+    const isActive = activeField === refKey;
+    const isConnected = activeField && lines.some(l => 
+      (l.fromKey === activeField && l.toKey === refKey) || 
+      (l.toKey === activeField && l.fromKey === refKey)
+    );
+    const isDimmed = activeField && !isActive && !isConnected;
+    return (
+      <div ref={setRef(refKey)}
+        onClick={() => setActiveField(activeField === refKey ? null : refKey)}
+        className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs font-mono cursor-pointer transition-all
+          ${colorClass} 
+          ${isActive ? 'ring-2 ring-offset-1 ring-indigo-400 shadow-md scale-105' : ''}
+          ${isConnected ? 'ring-1 ring-offset-1 ring-indigo-300 shadow-sm' : ''}
+          ${isDimmed ? 'opacity-20' : ''}
+          whitespace-nowrap`}>
+        {icon}
+        <span className="truncate max-w-[140px]">{label}</span>
+      </div>
+    );
+  };
 
   return (
     <div ref={containerRef} className="relative py-2">
