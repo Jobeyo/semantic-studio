@@ -72,7 +72,7 @@ export default function LineagePage() {
         {/* Vänster – modellista */}
         <div className="w-64 border-r border-gray-200 overflow-y-auto bg-white flex-shrink-0">
           <div className="p-3 border-b border-gray-100">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Modeller</p>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Semantiska modeller</p>
           </div>
           {loading ? (
             <div className="p-4 text-sm text-gray-400">Laddar...</div>
@@ -110,7 +110,7 @@ export default function LineagePage() {
                 style={{ gridTemplateColumns: '1fr 20px 1fr 20px 1fr 20px 1fr' }}>
                 <div className="text-center">Källtabeller</div>
                 <div />
-                <div className="text-center">Teknisk SQL-vy</div>
+                <div className="text-center">Datamodell</div>
                 <div />
                 <div className="text-center">Semantisk modell</div>
                 <div />

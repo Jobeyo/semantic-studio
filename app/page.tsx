@@ -19,7 +19,7 @@ export default function DashboardPage() {
   }, [name]);
 
   const cards = [
-    { title: 'Modeller', description: 'Skapa och hantera semantiska modeller', href: '/models', icon: Database, color: 'bg-indigo-50 text-indigo-600' },
+    { title: 'Semantiska modeller', description: 'Skapa och hantera semantiska modeller', href: '/models', icon: Database, color: 'bg-indigo-50 text-indigo-600' },
     { title: 'Anslutningar', description: 'Konfigurera databaskopplingar', href: '/connections', icon: GitBranch, color: 'bg-blue-50 text-blue-600' },
     { title: 'Glossary', description: 'Affärstermer och definitioner', href: '/glossary', icon: BookOpen, color: 'bg-green-50 text-green-600' },
     { title: 'Ändringslogg', description: 'Se vad som ändrats och av vem', href: '/changelog', icon: History, color: 'bg-amber-50 text-amber-600' },
@@ -47,7 +47,7 @@ export default function DashboardPage() {
         <div className="mt-8 max-w-3xl">
           <div className="bg-indigo-600 rounded-xl p-6 flex items-center justify-between">
             <div>
-              <h3 className="text-white font-semibold mb-1">{modelCount > 0 ? 'Skapa en modell' : 'Skapa din första modell'}</h3>
+              <h3 className="text-white font-semibold mb-1">{modelCount > 0 ? 'Skapa en semantisk modell' : 'Skapa din första semantiska modell'}</h3>
               <p className="text-indigo-200 text-sm">Anslut till en datakälla och låt AI hjälpa dig bygga det semantiska lagret</p>
             </div>
             <Link href="/models/new"
