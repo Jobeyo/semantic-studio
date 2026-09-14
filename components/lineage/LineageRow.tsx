@@ -223,7 +223,7 @@ export default function LineageRow({ view, targetSchema, klarifyUrl }: Props) {
           <svg width="20" height="16"><path d="M0 8 L14 8 M8 4 L14 8 L8 12" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" /></svg>
         </div>
 
-        {/* 3. Affärsmodell */}
+        {/* 3. Semantisk modell */}
         <div>
           <NodeHeader id="biz" title={view.displayName || view.name} sub={view.type} count={view.columns.length}
             hColor={colors.text} bColor={colors.border} bgColor={colors.bg} />
