@@ -45,9 +45,12 @@ export default function TopBar() {
     .split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
 
   function getTitle() {
-    if (pathname === '/') return 'Semantic Studio';
-    if (pathname === '/models') return 'Modeller';
+    if (pathname === '/') return 'Översikt';
+    if (pathname === '/models') return 'Affärsmodeller';
     if (pathname.startsWith('/models/') && pathname.includes('/views/')) return 'Vy';
+    if (pathname === '/governance/lineage') return 'Lineage';
+    if (pathname === '/governance/quality') return 'Data Quality';
+    if (pathname === '/governance/ownership') return 'Ownership';
     if (pathname.startsWith('/models/')) return 'Modell';
     if (pathname === '/glossary') return 'Business Glossary';
     if (pathname === '/changelog') return 'Ändringslogg';

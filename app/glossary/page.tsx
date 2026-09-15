@@ -129,7 +129,7 @@ export default function GlossaryPage() {
             setSelectedModelId(id);
             loadTerms(id ?? undefined);
           }} className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            <option value="">Alla modeller</option>
+            <option value="">Alla affärsmodeller</option>
             {models.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
           </select>
   <button onClick={() => { if (!selectedModelId) { alert('Välj en modell'); return; } setShowGenerateConfirm(true); }} disabled={generating || !selectedModelId}
