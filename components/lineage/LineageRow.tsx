@@ -204,6 +204,7 @@ export default function LineageRow({ view, targetSchema, klarifyUrl }: Props) {
 
         {/* 2. SQL-vy */}
         <div>
+          <div className="text-xs text-gray-400 font-semibold mb-1">Semantiskt vylager</div>
           <NodeHeader id="sql" title={view.name} sub={targetSchema} count={view.columns.length}
             hColor="text-gray-700" bColor="border-gray-200" bgColor="bg-white" />
           {expanded.has('sql') && (
@@ -225,6 +226,7 @@ export default function LineageRow({ view, targetSchema, klarifyUrl }: Props) {
 
         {/* 3. Semantisk modell */}
         <div>
+          <div className="text-xs text-gray-400 font-semibold mb-1">Affärsmodell</div>
           <NodeHeader id="biz" title={view.displayName || view.name} sub={view.type} count={view.columns.length}
             hColor={colors.text} bColor={colors.border} bgColor={colors.bg} />
           {expanded.has('biz') && (

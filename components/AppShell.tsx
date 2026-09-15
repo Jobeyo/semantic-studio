@@ -21,7 +21,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const navItems = [
     { href: '/', label: 'Översikt', icon: Home },
-    { href: '/models', label: 'Semantiska modeller', icon: Database },
+    { href: '/models', label: 'Affärsmodeller', icon: Database },
     { href: '/changelog', label: 'Ändringslogg', icon: History },
     { href: '/connections', label: 'Anslutningar', icon: GitBranch },
     { href: '/settings', label: 'Inställningar', icon: Settings },

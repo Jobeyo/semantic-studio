@@ -37,7 +37,7 @@ export default function ModelsPage() {
   const [deletingModel, setDeletingModel] = useState<{id: number; name: string} | null>(null);
   const { setHeader } = usePageHeader();
   const [models, setModels] = useState<Model[]>([]);
-  useEffect(() => { setHeader('Semantiska modeller', `${models.length} modell${models.length !== 1 ? 'er' : ''}`); }, [models.length]);
+  useEffect(() => { setHeader('Affärsmodeller', `${models.length} modell${models.length !== 1 ? 'er' : ''}`); }, [models.length]);
   const [loading, setLoading] = useState(true);
 
   async function deleteModel(e: React.MouseEvent, modelId: number, modelName: string) {

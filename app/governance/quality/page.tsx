@@ -136,20 +136,22 @@ export default function DataQualityPage() {
 
             {models.map(model => (
               <div key={model.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                <button onClick={() => setExpandedModels(prev => { const s = new Set(prev); s.has(model.id) ? s.delete(model.id) : s.add(model.id); return s; })}
-                  className="w-full flex items-center gap-3 p-5 hover:bg-gray-50 text-left">
-                  <Database className="w-5 h-5 text-indigo-500" />
-                  <span className="font-semibold text-gray-900 flex-1">{model.name}</span>
-                  <span className="text-xs text-gray-400 mr-2">
-                    {model.views.reduce((a, v) => a + v.qualityRules.length, 0)} regler
-                  </span>
-                  <button onClick={e => { e.stopPropagation(); runChecks(model); }} disabled={running === model.id}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs hover:bg-indigo-700 disabled:opacity-50 mr-2">
+                <div className="flex items-center">
+                  <button onClick={() => setExpandedModels(prev => { const s = new Set(prev); s.has(model.id) ? s.delete(model.id) : s.add(model.id); return s; })}
+                    className="flex-1 flex items-center gap-3 p-5 hover:bg-gray-50 text-left">
+                    <Database className="w-5 h-5 text-indigo-500" />
+                    <span className="font-semibold text-gray-900 flex-1">{model.name}</span>
+                    <span className="text-xs text-gray-400 mr-2">
+                      {model.views.reduce((a, v) => a + v.qualityRules.length, 0)} regler
+                    </span>
+                    {expandedModels.has(model.id) ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
+                  </button>
+                  <button onClick={() => runChecks(model)} disabled={running === model.id}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs hover:bg-indigo-700 disabled:opacity-50 mr-4">
                     {running === model.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
                     Kör kontroller
                   </button>
-                  {expandedModels.has(model.id) ? <ChevronDown className="w-4 h-4 text-gray-400" /> : <ChevronRight className="w-4 h-4 text-gray-400" />}
-                </button>
+                </div>
 
                 {expandedModels.has(model.id) && (
                   <div className="border-t border-gray-100">
