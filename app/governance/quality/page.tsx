@@ -104,10 +104,7 @@ export default function DataQualityPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="px-8 py-6 border-b border-gray-200 bg-white">
-        <h1 className="text-xl font-semibold text-gray-900">Data Quality</h1>
-        <p className="text-sm text-gray-500 mt-1">Definiera och kör kvalitetskontroller på dina affärsmodeller</p>
-      </div>
+
       <div className="flex-1 overflow-y-auto p-8">
         {loading ? (
           <div className="flex items-center justify-center py-20 text-gray-400">Laddar...</div>

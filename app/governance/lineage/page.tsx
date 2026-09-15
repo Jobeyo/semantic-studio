@@ -63,10 +63,7 @@ export default function LineagePage() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <div className="px-8 py-6 border-b border-gray-200 bg-white flex-shrink-0">
-        <h1 className="text-xl font-semibold text-gray-900">Lineage</h1>
-        <p className="text-sm text-gray-500 mt-1">Dataflöde från källdata till affärsmodell och rapporter · Klicka "Expandera" för fältnivå-lineage</p>
-      </div>
+
 
       <div className="flex flex-1 overflow-hidden">
         {/* Vänster – modellista */}

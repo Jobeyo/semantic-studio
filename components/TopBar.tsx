@@ -40,6 +40,9 @@ export default function TopBar() {
     } else if (pathname === '/connections') {
       fetch('/api/models').then(r => r.json()).then(m => setSubtitleCount(Array.isArray(m) ? `${m.length} anslutning${m.length !== 1 ? 'ar' : ''} från befintliga modeller` : '')).catch(() => {});
     }
+    if (pathname === '/governance/lineage') setSubtitleCount('Dataflöde från källscheman till affärsmodell och rapporter');
+    if (pathname === '/governance/quality') setSubtitleCount('Definiera och kör kvalitetskontroller på dina affärsmodeller');
+    if (pathname === '/governance/ownership') setSubtitleCount('Hantera ägarskap och ansvar för affärsmodeller');
   }, [pathname]);
   const initials = ((session?.user as any)?.name || session?.user?.email || 'A')
     .split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
