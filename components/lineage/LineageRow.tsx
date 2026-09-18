@@ -160,10 +160,10 @@ export default function LineageRow({ view, targetSchema, klarifyUrl }: Props) {
                 opacity={isDimmed ? 0.05 : 0.4}
                 strokeDasharray={l.dashed ? '4 2' : undefined} />
               {isActive && (
-                <path d={d} fill="none" stroke="#6366f1" strokeWidth={2}
+                <path d={d} fill="none" stroke={l.color} strokeWidth={2.5}
                   strokeLinecap="round"
                   strokeDasharray={l.dashed ? '6 3' : undefined}
-                  opacity={0.7} />
+                  opacity={1} />
               )}
             </g>
           );
