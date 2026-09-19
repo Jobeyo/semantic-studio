@@ -4,7 +4,7 @@ import { Table, Layers, Database, BarChart2, Key, Hash, ExternalLink, ChevronDow
 
 interface ColumnMapping { sourceCol: string; targetCol: string; }
 interface ColumnInfo { name: string; displayName: string; dataType: string; isKey: boolean; isMeasure: boolean; }
-interface ReportInfo { id: string; title: string; sourceViews: string[]; sourceColumns: { viewName: string; columnName: string }[]; }
+interface ReportInfo { id: string; title: string; sourceViews: string[]; sourceColumns: { viewName: string; columnName: string }[]; reportOwner?: string; reportOwnerEmail?: string; reportRequester?: string; }
 interface ViewNode {
   name: string; displayName: string; type: string;
   sourceTables: string[]; columnCount: number;
@@ -270,7 +270,25 @@ export default function LineageRow({ view, targetSchema, klarifyUrl }: Props) {
                         <NodeHeader id={rid} title={report.title} count={usedCols.length}
                           hColor="text-green-700" bColor="border-0" bgColor="bg-green-50" />
                         {expanded.has(rid) && (
-                          <div className="px-2 pb-2">
+                          <div className="px-2 pb-2 bg-green-50 border-t border-green-100">
+                          {(report.reportOwner || report.reportRequester) && (
+                            <div className="pb-1 pt-0.5 space-y-0.5">
+                              {report.reportOwner && (
+                                <div className="flex items-center gap-1 text-xs text-green-600">
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                  {report.reportOwnerEmail ? (
+                                    <a href={`mailto:${report.reportOwnerEmail}`} className="hover:underline">{report.reportOwner}</a>
+                                  ) : report.reportOwner}
+                                </div>
+                              )}
+                              {report.reportRequester && (
+                                <div className="flex items-center gap-1 text-xs text-green-500">
+                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                  {report.reportRequester}
+                                </div>
+                              )}
+                            </div>
+                          )}
                             {usedCols.map(sc => (
                               <Field key={sc.columnName}
                                 refKey={'report:' + report.id + ':' + sc.columnName}

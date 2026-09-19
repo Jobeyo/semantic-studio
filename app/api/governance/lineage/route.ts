@@ -122,7 +122,7 @@ export async function GET() {
     // Hämta rapporter från Klarify
     const klarifyUrl = process.env.KLARIFY_URL ?? (process.env.NODE_ENV === 'production' ? 'http://klarify:3000' : 'http://localhost:3000');
     console.log('Fetching reports from:', klarifyUrl);
-    const reportsByModel: Record<number, {id: string; title: string; sourceViews: string[]; sourceColumns: {viewName: string; columnName: string}[]}[]> = {};
+    const reportsByModel: Record<number, {id: string; title: string; reportOwner?: string; reportOwnerEmail?: string; reportRequester?: string; sourceViews: string[]; sourceColumns: {viewName: string; columnName: string}[]}[]> = {};
     try {
       const res = await fetch(`${klarifyUrl}/api/reports`, {
         headers: { 'x-internal-key': process.env.INTERNAL_API_KEY ?? 'studio-internal' },
@@ -136,6 +136,9 @@ export async function GET() {
             reportsByModel[r.modelId].push({
               id: r.id,
               title: r.title,
+              reportOwner: r.reportOwner ?? null,
+              reportOwnerEmail: r.reportOwnerEmail ?? null,
+              reportRequester: r.reportRequester ?? null,
               sourceViews: r.sourceViews ?? [],
               sourceColumns: r.sourceColumns ?? [],
             });
