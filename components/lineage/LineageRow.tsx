@@ -275,7 +275,8 @@ export default function LineageRow({ view, targetSchema, klarifyUrl }: Props) {
                             <div className="pb-1 pt-0.5 space-y-0.5">
                               {report.reportOwner && (
                                 <div className="flex items-center gap-1 text-xs text-green-600">
-                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                  <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                                  <span className="text-green-400">Ägare:</span>
                                   {report.reportOwnerEmail ? (
                                     <a href={`mailto:${report.reportOwnerEmail}`} className="hover:underline">{report.reportOwner}</a>
                                   ) : report.reportOwner}
@@ -283,7 +284,8 @@ export default function LineageRow({ view, targetSchema, klarifyUrl }: Props) {
                               )}
                               {report.reportRequester && (
                                 <div className="flex items-center gap-1 text-xs text-green-500">
-                                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                  <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                  <span className="text-green-400">Beställare:</span>
                                   {report.reportRequester}
                                 </div>
                               )}
