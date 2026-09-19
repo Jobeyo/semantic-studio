@@ -28,7 +28,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   ];
 
   const governanceItems = [
-    { href: '/governance/lineage', label: 'Lineage', icon: GitMerge },
+    { href: '/governance/lineage', label: 'Data Lineage', icon: GitMerge },
     { href: '/governance/quality', label: 'Data Quality', icon: ShieldCheck },
     { href: '/glossary', label: 'Glossary', icon: BookOpen },
     { href: '/governance/ownership', label: 'Ownership', icon: Users },

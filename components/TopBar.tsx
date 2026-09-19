@@ -51,7 +51,7 @@ export default function TopBar() {
     if (pathname === '/') return 'Översikt';
     if (pathname === '/models') return 'Affärsmodeller';
     if (pathname.startsWith('/models/') && pathname.includes('/views/')) return 'Vy';
-    if (pathname === '/governance/lineage') return 'Lineage';
+    if (pathname === '/governance/lineage') return 'Data Lineage';
     if (pathname === '/governance/quality') return 'Data Quality';
     if (pathname === '/governance/ownership') return 'Ownership';
     if (pathname.startsWith('/models/')) return 'Modell';
