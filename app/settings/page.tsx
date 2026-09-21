@@ -204,10 +204,10 @@ export default function SettingsPage() {
       <div className="flex-1 flex overflow-hidden">
         {/* Sidonav */}
         <div className="w-48 border-r border-gray-200 bg-white p-3 space-y-1 flex-shrink-0">
+          {isAdmin && sectionBtn('agent', 'AI-agent', Sparkles)}
           {sectionBtn('llm', 'AI-leverantörer', Sparkles)}
           {isAdmin && sectionBtn('users', 'Användare', Users)}
           {sectionBtn('password', 'Lösenord', Lock)}
-          {isAdmin && sectionBtn('agent', 'AI-agent', Sparkles)}
         </div>
 
         {/* Innehåll */}
