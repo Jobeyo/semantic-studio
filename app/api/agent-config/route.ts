@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { auth } from '@/auth';
-import db from '@/lib/db';
+import { prisma as db } from '@/lib/db';
 
 export async function GET() {
   try {

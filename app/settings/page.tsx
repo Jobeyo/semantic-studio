@@ -84,7 +84,7 @@ export default function SettingsPage() {
     if (activeSection === 'llm') loadProviders();
     if (activeSection === 'agent') {
       fetch('/api/agent-config').then(r => r.json()).then((d: any) => {
-        setAgentConfig({ agentName: d.agent_name ?? 'Studio AI', agentDescription: d.agent_description ?? '', agentPersona: d.agent_persona ?? '', systemPromptExtra: d.system_prompt_extra ?? '' });
+        setAgentConfig({ agentName: d.agentName ?? d.agent_name ?? 'Studio AI', agentDescription: d.agentDescription ?? d.agent_description ?? '', agentPersona: d.agentPersona ?? d.agent_persona ?? '', systemPromptExtra: d.systemPromptExtra ?? d.system_prompt_extra ?? '' });
       }).catch(() => {});
     }
   }, [activeSection]);
