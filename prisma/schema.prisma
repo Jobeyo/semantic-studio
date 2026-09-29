@@ -60,6 +60,9 @@ model SemanticModel {
   changelogs    Changelog[]
   glossaryTerms GlossaryTerm[]
   changeLogs    ChangeLog[]
+  ontologyConcepts  OntologyConcept[]
+  ontologyRelations OntologyRelation[]
+  ontologyRules     OntologyRule[]
 }
 
 model ModelView {
@@ -73,6 +76,7 @@ model ModelView {
   sql         String // Den SQL-fråga som skapar vyn
   columns     ViewColumn[]
   qualityRules DataQualityRule[]
+  ontologyConcepts OntologyConcept[]
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 }
@@ -91,6 +95,7 @@ model ViewColumn {
   isDerived   Boolean   @default(false) // Härlett mått eller härledd kolumn
   expression  String?   // SQL-uttryck för härledda kolumner/mått
   createdAt   DateTime  @default(now())
+  ontologyProperties OntologyProperty[]
 }
 
 model ModelVersion {
@@ -157,6 +162,7 @@ model GlossaryTerm {
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
   updatedBy  String?
+  ontologyConcepts OntologyConcept[]
 }
 
 model DataQualityRule {
@@ -169,4 +175,80 @@ model DataQualityRule {
   description String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+}
+
+// ─── Ontologi ────────────────────────────────────────────────────────────────
+// Ontologin hör till en affärsmodell och publiceras tillsammans med den.
+
+model OntologyConcept {
+  id             Int                @id @default(autoincrement())
+  modelId        Int
+  model          SemanticModel      @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  name           String             // Begreppets namn, t.ex. "Kund"
+  description    String?
+  synonyms       String[]           @default([]) // t.ex. ["klient", "beställare"]
+  glossaryTermId Int?               // Länk till term i Business Glossary
+  glossaryTerm   GlossaryTerm?      @relation(fields: [glossaryTermId], references: [id], onDelete: SetNull)
+  viewId         Int?               // Vyn som representerar begreppet
+  view           ModelView?         @relation(fields: [viewId], references: [id], onDelete: SetNull)
+  keyColumn      String?            // Identifierande kolumn i vyn
+  owner          String?
+  createdBy      String             // AI eller e-post
+  updatedBy      String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  properties     OntologyProperty[]
+  outgoing       OntologyRelation[] @relation("RelationFrom")
+  incoming       OntologyRelation[] @relation("RelationTo")
+  rules          OntologyRule[]
+
+  @@unique([modelId, name])
+}
+
+model OntologyProperty {
+  id          Int             @id @default(autoincrement())
+  conceptId   Int
+  concept     OntologyConcept @relation(fields: [conceptId], references: [id], onDelete: Cascade)
+  columnId    Int?            // Kolumnen i modellen som egenskapen motsvarar
+  column      ViewColumn?     @relation(fields: [columnId], references: [id], onDelete: SetNull)
+  name        String          // Affärsnamn, t.ex. "Vikt"
+  description String?
+  unit        String?         // kg, ton, SEK, st, % ...
+  isMeasure   Boolean         @default(false)
+  createdAt   DateTime        @default(now())
+}
+
+model OntologyRelation {
+  id            Int             @id @default(autoincrement())
+  modelId       Int
+  model         SemanticModel   @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  fromConceptId Int
+  fromConcept   OntologyConcept @relation("RelationFrom", fields: [fromConceptId], references: [id], onDelete: Cascade)
+  toConceptId   Int
+  toConcept     OntologyConcept @relation("RelationTo", fields: [toConceptId], references: [id], onDelete: Cascade)
+  verb          String          // t.ex. "lägger" (Kund lägger Order)
+  inverseVerb   String?         // t.ex. "läggs av"
+  cardinality   String          @default("one_to_many") // one_to_one, one_to_many, many_to_one, many_to_many
+  joinCondition String?         // t.ex. "fact_order.customer_id = dim_customer.id"
+  description   String?
+  createdBy     String
+  updatedBy     String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+
+model OntologyRule {
+  id          Int              @id @default(autoincrement())
+  modelId     Int
+  model       SemanticModel    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  conceptId   Int?
+  concept     OntologyConcept? @relation(fields: [conceptId], references: [id], onDelete: SetNull)
+  name        String           // t.ex. "Återvinningsbart material"
+  description String           // Regeln i klartext
+  expression  String?          // SQL-uttryck, t.ex. "material_group IN ('Metall','Papper')"
+  ruleType    String           @default("definition") // definition, filter, calculation, unit, constraint
+  createdBy   String
+  updatedBy   String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 }

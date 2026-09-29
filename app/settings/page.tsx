@@ -246,7 +246,11 @@ export default function SettingsPage() {
                     rows={3} placeholder="T.ex: Svara alltid på svenska. Fokusera på datamodellering."
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none" />
                 </div>
-                <div className="flex justify-end">
+                <div className="flex justify-between">
+                  <button onClick={() => setAgentConfig({ agentName: 'Studio AI', agentDescription: '', agentPersona: '', systemPromptExtra: '' })}
+                    className="px-4 py-2 border border-gray-300 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-50">
+                    Nollställ
+                  </button>
                   <button onClick={async () => {
                     setSavingAgent(true);
                     try {

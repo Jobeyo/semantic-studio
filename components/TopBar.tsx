@@ -56,6 +56,7 @@ export default function TopBar() {
     if (pathname === '/governance/ownership') return 'Ownership';
     if (pathname.startsWith('/models/')) return 'Modell';
     if (pathname === '/glossary') return 'Business Glossary';
+    if (pathname === '/ontology') return 'Ontologi';
     if (pathname === '/changelog') return 'Ändringslogg';
     if (pathname === '/connections') return 'Anslutningar';
     if (pathname === '/settings') return 'Inställningar';
