@@ -118,6 +118,14 @@ export default function OntologyPage() {
   const [generateMode, setGenerateMode] = useState<'missing' | 'all'>('missing');
   const [contextText, setContextText] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [notice, setNotice] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
+
+  useEffect(() => {
+    if (notice?.kind !== 'success') return;
+    const t = setTimeout(() => setNotice(null), 8000);
+    return () => clearTimeout(t);
+  }, [notice]);
+  const fail = (text: string) => setNotice({ kind: 'error', text });
 
   useEffect(() => {
     setHeader('Ontologi', data ? `${data.concepts.length} begrepp · ${data.relations.length} relationer · ${data.rules.length} regler` : 'Begrepp, relationer och affärsregler per affärsmodell');
@@ -158,7 +166,7 @@ export default function OntologyPage() {
       body: JSON.stringify({ ...body, modelId }),
     });
     setSaving(false);
-    if (!res.ok) { const err = await res.json().catch(() => ({})); alert('Fel: ' + (err.error ?? res.status)); return; }
+    if (!res.ok) { const err = await res.json().catch(() => ({})); fail(err.error ?? `Något gick fel (${res.status})`); return; }
     setOpen(null); setEditingId(null);
     await load();
   }
@@ -167,12 +175,12 @@ export default function OntologyPage() {
     const extra = kind === 'concepts' ? '\n\nRelationer till begreppet tas också bort.' : '';
     if (!confirm(`Ta bort "${label}"?${extra}`)) return;
     const res = await fetch(`/api/ontology/${kind}/${id}`, { method: 'DELETE' });
-    if (!res.ok) { alert('Kunde inte ta bort'); return; }
+    if (!res.ok) { fail('Kunde inte ta bort'); return; }
     await load();
   }
 
   function saveConcept() {
-    if (!conceptForm.name.trim()) { alert('Namn krävs'); return; }
+    if (!conceptForm.name.trim()) { fail('Namn krävs'); return; }
     send('concepts', {
       ...conceptForm,
       glossaryTermId: conceptForm.glossaryTermId || null,
@@ -181,11 +189,11 @@ export default function OntologyPage() {
     });
   }
   function saveRelation() {
-    if (!relationForm.fromConceptId || !relationForm.toConceptId || !relationForm.verb.trim()) { alert('Välj begrepp och ange relation'); return; }
+    if (!relationForm.fromConceptId || !relationForm.toConceptId || !relationForm.verb.trim()) { fail('Välj begrepp och ange relation'); return; }
     send('relations', relationForm);
   }
   function saveRule() {
-    if (!ruleForm.name.trim() || !ruleForm.description.trim()) { alert('Namn och beskrivning krävs'); return; }
+    if (!ruleForm.name.trim() || !ruleForm.description.trim()) { fail('Namn och beskrivning krävs'); return; }
     send('rules', { ...ruleForm, conceptId: ruleForm.conceptId || null });
   }
 
@@ -249,9 +257,9 @@ export default function OntologyPage() {
     });
     const body = await res.json().catch(() => ({}));
     setGenerating(false);
-    if (!res.ok) { alert('Fel: ' + (body.error ?? res.status)); return; }
+    if (!res.ok) { fail(body.error ?? `Något gick fel (${res.status})`); return; }
     await load();
-    alert(`AI lade till ${body.conceptsCreated} begrepp, ${body.relationsCreated} relationer och ${body.rulesCreated} regler. Granska förslagen innan modellen publiceras.`);
+    setNotice({ kind: 'success', text: `AI lade till ${body.conceptsCreated} begrepp, ${body.relationsCreated} relationer och ${body.rulesCreated} regler. Granska förslagen, särskilt enheter och SQL-uttryck, innan modellen publiceras.` });
   }
 
   async function showContext() {
@@ -313,6 +321,13 @@ export default function OntologyPage() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-8 pb-16">
+          {notice && (
+            <div className={`fixed top-6 right-6 z-[60] max-w-md shadow-lg flex items-start gap-3 rounded-xl border px-4 py-3 text-sm ${notice.kind === 'success' ? 'bg-indigo-50 border-indigo-200 text-indigo-900' : 'bg-red-50 border-red-200 text-red-800'}`}>
+              {notice.kind === 'success' ? <Sparkles className="w-4 h-4 mt-0.5 shrink-0 text-indigo-500" /> : <X className="w-4 h-4 mt-0.5 shrink-0" />}
+              <p className="flex-1">{notice.text}</p>
+              <button onClick={() => setNotice(null)} className="opacity-60 hover:opacity-100"><X className="w-4 h-4" /></button>
+            </div>
+          )}
           {loading ? (
             <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
           ) : !data ? (

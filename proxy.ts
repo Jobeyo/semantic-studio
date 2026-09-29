@@ -9,7 +9,9 @@ export default auth((req) => {
   const isApiSetup = req.nextUrl.pathname.startsWith('/api/setup');
   const isApiGlossary = req.nextUrl.pathname.startsWith('/api/glossary');
   const isInternalModels = req.nextUrl.pathname.startsWith('/api/models') && req.headers.get('x-internal-request') === 'true';
-  if (isApiAuth || isApiSetup || isApiGlossary || isInternalModels) return NextResponse.next();
+  const isInternalOntology = req.nextUrl.pathname === '/api/ontology/context' &&
+    (req.headers.get('x-internal-request') === 'true' || !!req.headers.get('x-internal-key'));
+  if (isApiAuth || isApiSetup || isApiGlossary || isInternalModels || isInternalOntology) return NextResponse.next();
   if (isSetupPage) return NextResponse.next();
   if (!isLoggedIn && !isLoginPage) return NextResponse.redirect(new URL('/login', req.url));
   if (isLoggedIn && isLoginPage) return NextResponse.redirect(new URL('/', req.url));
