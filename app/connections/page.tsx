@@ -106,7 +106,8 @@ export default function ConnectionsPage() {
           port: editingIdx === idx ? editForm.port : conn.port,
           database: editingIdx === idx ? editForm.database : conn.database,
           user: editingIdx === idx ? editForm.user : conn.user,
-          password: editingIdx === idx ? editForm.password : '',
+          password: editingIdx === idx ? (editForm.password || undefined) : undefined,
+          modelId: conn.modelId,
           ssl: editingIdx === idx ? editForm.ssl : conn.ssl,
         }),
       });

@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     let { sourceType, host, port, database, user, password, ssl, modelId } = await request.json();
     // Om modelId skickas, hämta lösenord från befintlig modell
     if (modelId && !password) {
-      const model = await prisma.semanticModel.findUnique({ where: { id: modelId } });
+      const model = await prisma.semanticModel.findUnique({ where: { id: Number(modelId) } });
       if (model) {
         const config = model.sourceConfig as any;
         if (!password) password = config.password;
