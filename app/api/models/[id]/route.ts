@@ -25,11 +25,11 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     if (!session?.user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const { id } = await params;
     const updates = await request.json();
-    // Behåll sparat lösenord om inget nytt skickas
-    if (updates.sourceConfig && typeof updates.sourceConfig === 'object' && !updates.sourceConfig.password) {
+    // Behåll sparade inställningar (lösenord, lineage-källa m.m.) som formuläret inte skickar med
+    if (updates.sourceConfig && typeof updates.sourceConfig === 'object') {
       const existing = await prisma.semanticModel.findUnique({ where: { id: parseInt(id) }, select: { sourceConfig: true } });
-      const oldPassword = (existing?.sourceConfig as any)?.password;
-      if (oldPassword) updates.sourceConfig.password = oldPassword;
+      const old = (existing?.sourceConfig as any) ?? {};
+      updates.sourceConfig = { ...old, ...updates.sourceConfig, password: updates.sourceConfig.password || old.password };
     }
     const model = await prisma.semanticModel.update({
       where: { id: parseInt(id) },

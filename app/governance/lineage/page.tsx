@@ -1,39 +1,16 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Database, GitMerge } from 'lucide-react';
-import LineageRow from '@/components/lineage/LineageRow';
+import { Database, GitMerge, AlertTriangle } from 'lucide-react';
+import LineageRow, { lineageGridTemplate, type ViewNode as RowViewNode, type ReportInfo } from '@/components/lineage/LineageRow';
 
-interface ColumnMapping {
-  sourceCol: string;
-  targetCol: string;
-}
+interface ViewNode extends RowViewNode { id: number; sql: string; }
 
-interface ColumnInfo {
-  name: string;
-  displayName: string;
-  dataType: string;
-  isKey: boolean;
-  isMeasure: boolean;
-}
-
-interface ReportInfo {
-  id: string;
-  title: string;
-  sourceViews: string[];
-  sourceColumns: { viewName: string; columnName: string }[];
-}
-
-interface ViewNode {
-  id: number;
-  name: string;
-  displayName: string;
-  type: string;
-  sql: string;
-  sourceTables: string[];
-  columnCount: number;
-  columns: ColumnInfo[];
-  columnMappings: ColumnMapping[];
-  reports: ReportInfo[];
+interface EtlLineageInfo {
+  configured: boolean;
+  source: string | null;
+  error: string | null;
+  matchedTables: number;
+  depth: number; // 0 = ingen, 1 = modellen bygger på Core, 2 = modellen bygger på data mart
 }
 
 interface ModelLineage {
@@ -43,6 +20,7 @@ interface ModelLineage {
   sourceDatabase: string;
   sourceHost: string;
   targetSchema: string;
+  etlLineage?: EtlLineageInfo;
   views: ViewNode[];
   reports: ReportInfo[];
 }
@@ -60,11 +38,19 @@ export default function LineagePage() {
   }, []);
 
   const klarifyUrl = process.env.NEXT_PUBLIC_KLARIFY_URL ?? 'https://app.klarify.nu';
+  const etl = selectedModel?.etlLineage;
+  const depth = etl?.depth ?? 0;
+  const headers = [
+    ...(depth >= 1 ? ['Källa'] : []),
+    ...(depth >= 2 ? ['Core'] : []),
+    depth >= 2 ? 'Data mart' : depth === 1 ? 'Core' : 'Källscheman',
+    'Semantiskt vylager',
+    'Affärsmodell',
+    'Rapporter',
+  ];
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-
-
       <div className="flex flex-1 overflow-hidden">
         {/* Vänster – modellista */}
         <div className="w-64 border-r border-gray-200 overflow-y-auto bg-white flex-shrink-0">
@@ -100,18 +86,28 @@ export default function LineagePage() {
               <div className="mb-6">
                 <h2 className="text-lg font-semibold text-gray-900">{selectedModel.name}</h2>
                 <p className="text-sm text-gray-500">{selectedModel.sourceDatabase} → {selectedModel.targetSchema}</p>
+                {etl?.error ? (
+                  <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-1">
+                    <AlertTriangle className="w-3.5 h-3.5" /> ETL-lineage kunde inte läsas från {etl.source}: {etl.error}
+                  </p>
+                ) : etl?.configured && depth > 0 ? (
+                  <p className="mt-1 text-xs text-gray-400">
+                    ETL-lineage från {etl.source} · {etl.matchedTables} källtabeller kopplade · modellen bygger på {depth === 2 ? 'data mart' : 'Core'}
+                  </p>
+                ) : etl?.configured ? (
+                  <p className="mt-1 text-xs text-gray-400">ETL-lineage från {etl.source}: inga av modellens källtabeller finns med</p>
+                ) : (
+                  <p className="mt-1 text-xs text-gray-400">Ingen ETL-lineage kopplad. Flödet visas från modellens källtabeller.</p>
+                )}
               </div>
 
-              {/* Kolumnrubriker - matchar LineageRow grid: 1fr 20px 1fr 20px 1fr 20px 1fr */}
+              {/* Kolumnrubriker – samma grid som LineageRow */}
               <div className="grid text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 gap-3 px-1"
-                style={{ gridTemplateColumns: '1fr 20px 1fr 20px 1fr 20px 1fr' }}>
-                <div className="text-center">Källscheman</div>
-                <div />
-                <div className="text-center">Semantiskt vylager</div>
-                <div />
-                <div className="text-center">Affärsmodell</div>
-                <div />
-                <div className="text-center">Rapporter</div>
+                style={{ gridTemplateColumns: lineageGridTemplate(depth) }}>
+                {headers.flatMap((h, i) => [
+                  ...(i > 0 ? [<div key={'sp' + i} />] : []),
+                  <div key={h} className="text-center">{h}</div>,
+                ])}
               </div>
 
               {selectedModel.views.map(view => (
@@ -120,6 +116,7 @@ export default function LineagePage() {
                   view={view}
                   targetSchema={selectedModel.targetSchema}
                   klarifyUrl={klarifyUrl}
+                  upstreamDepth={depth}
                 />
               ))}
             </div>
