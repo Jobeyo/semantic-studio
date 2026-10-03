@@ -10,8 +10,9 @@ export async function GET(request: NextRequest) {
     const orgId = searchParams.get('orgId');
     
     // Tillåt intern request från Klarify eller publik med orgId
-    const isInternal = request.headers.get('x-internal-request') === 'true';
-    if (!session?.user && !orgId && !isInternal) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const internalKey = process.env.INTERNAL_API_KEY;
+    const isInternal = !!internalKey && request.headers.get('x-internal-key') === internalKey;
+    if (!session?.user && !isInternal) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     
     const effectiveOrgId = session?.user 
       ? (await prisma.user.findUnique({ where: { email: session.user.email! } }))?.orgId ?? parseInt(orgId ?? '1')

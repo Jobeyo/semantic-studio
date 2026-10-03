@@ -10,10 +10,14 @@ export async function POST(request: NextRequest) {
     let { sourceType, host, port, database, user, password, ssl, modelId } = await request.json();
     // Om modelId skickas, hämta lösenord från befintlig modell
     if (modelId && !password) {
-      const model = await prisma.semanticModel.findUnique({ where: { id: Number(modelId) } });
+      const model = await prisma.semanticModel.findFirst({
+        where: { id: Number(modelId), orgId: parseInt((session.user as any).orgId) },
+      });
       if (model) {
+        // Sparat lösenord används bara mot den sparade anslutningen, aldrig mot en adress som skickas in
         const config = model.sourceConfig as any;
-        if (!password) password = config.password;
+        ({ host, port, database, user, password, ssl } = config);
+        sourceType = model.sourceType;
       }
     }
     // Lokal dev-fallback: pg_lake -> extern adress

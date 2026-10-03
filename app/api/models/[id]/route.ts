@@ -2,10 +2,12 @@ import { NextRequest } from 'next/server';
 import { auth } from '@/auth';
 import prisma from '@/lib/db';
 import { logChange } from '@/lib/changelog';
+import { isInternalRequest, withoutSecrets } from '@/lib/internal';
+
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const isInternal = request.headers.get('x-internal-request') === 'true';
-    const session = await auth();
+    const isInternal = isInternalRequest(request);
+    const session = isInternal ? null : await auth();
     if (!session?.user && !isInternal) return Response.json({ error: 'Unauthorized' }, { status: 401 });
     const { id } = await params;
     const model = await prisma.semanticModel.findUnique({
@@ -13,28 +15,52 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       include: { views: { include: { columns: { orderBy: { id: 'asc' } } }, orderBy: { id: 'asc' } } },
     });
     if (!model) return Response.json({ error: 'Not found' }, { status: 404 });
-    return Response.json(model);
+    if (!isInternal && model.orgId !== parseInt((session!.user as any).orgId)) {
+      return Response.json({ error: 'Not found' }, { status: 404 });
+    }
+    // Klarify behöver aldrig anslutningens lösenord
+    return Response.json(isInternal ? withoutSecrets(model) : model);
   } catch (e) {
     return Response.json({ error: 'Server error' }, { status: 500 });
   }
 }
 
+// Fält som får ändras. Allt annat i anropet ignoreras.
+const UPDATABLE = ['name', 'description', 'status', 'owner', 'ownerEmail', 'sourceType', 'sourceConfig'] as const;
+const STATUSES = ['draft', 'published', 'archived'];
+
 export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const session = await auth();
     if (!session?.user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    const role = (session.user as any).role;
+    const orgId = parseInt((session.user as any).orgId);
     const { id } = await params;
-    const updates = await request.json();
-    // Behåll sparade inställningar (lösenord, lineage-källa m.m.) som formuläret inte skickar med
-    if (updates.sourceConfig && typeof updates.sourceConfig === 'object') {
-      const existing = await prisma.semanticModel.findUnique({ where: { id: parseInt(id) }, select: { sourceConfig: true } });
-      const old = (existing?.sourceConfig as any) ?? {};
-      updates.sourceConfig = { ...old, ...updates.sourceConfig, password: updates.sourceConfig.password || old.password };
+
+    const existing = await prisma.semanticModel.findUnique({ where: { id: parseInt(id) }, select: { orgId: true, sourceConfig: true } });
+    if (!existing || existing.orgId !== orgId) return Response.json({ error: 'Not found' }, { status: 404 });
+
+    const body = await request.json();
+    const updates: Record<string, any> = {};
+    for (const key of UPDATABLE) if (key in body) updates[key] = body[key];
+
+    if (updates.status !== undefined && !STATUSES.includes(updates.status)) {
+      return Response.json({ error: 'Ogiltig status' }, { status: 400 });
     }
-    const model = await prisma.semanticModel.update({
-      where: { id: parseInt(id) },
-      data: updates,
-    });
+
+    if (updates.sourceConfig !== undefined) {
+      // Att ändra en befintlig anslutning kräver admin
+      if (role !== 'admin') return Response.json({ error: 'Bara admin kan ändra anslutningen' }, { status: 403 });
+      if (updates.sourceConfig && typeof updates.sourceConfig === 'object') {
+        // Behåll sparade inställningar (lösenord, lineage-källa m.m.) som formuläret inte skickar med
+        const old = (existing.sourceConfig as any) ?? {};
+        const { hasPassword: _ignored, ...incoming } = updates.sourceConfig;
+        updates.sourceConfig = { ...old, ...incoming, password: incoming.password || old.password };
+      }
+    }
+
+    const model = await prisma.semanticModel.update({ where: { id: parseInt(id) }, data: updates });
+
     if (updates.status) {
       await logChange({
         orgId: model.orgId, modelId: model.id,
@@ -62,7 +88,12 @@ export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id:
   try {
     const session = await auth();
     if (!session?.user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    if ((session.user as any).role !== 'admin') return Response.json({ error: 'Bara admin kan ta bort en modell' }, { status: 403 });
     const { id } = await params;
+    const existing = await prisma.semanticModel.findUnique({ where: { id: parseInt(id) }, select: { orgId: true } });
+    if (!existing || existing.orgId !== parseInt((session.user as any).orgId)) {
+      return Response.json({ error: 'Not found' }, { status: 404 });
+    }
     // Ta bort kolumner → vyer → modell i rätt ordning
     const views = await prisma.modelView.findMany({ where: { modelId: parseInt(id) } });
     for (const view of views) {

@@ -9,8 +9,7 @@ import { getSessionUser, loadOntology, buildOntologyContext, ontologySnapshot } 
  */
 function isInternalRequest(request: NextRequest) {
   const key = process.env.INTERNAL_API_KEY;
-  if (key) return request.headers.get('x-internal-key') === key;
-  return request.headers.get('x-internal-request') === 'true';
+  return !!key && request.headers.get('x-internal-key') === key;
 }
 
 // GET /api/ontology/context?modelId=1&format=text|json

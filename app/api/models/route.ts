@@ -2,19 +2,22 @@ import { NextRequest } from 'next/server';
 import { auth } from '@/auth';
 import prisma from '@/lib/db';
 import { logChange } from '@/lib/changelog';
+import { isInternalRequest, withoutSecrets } from '@/lib/internal';
 
 export async function GET(request: Request) {
   try {
-    const isInternal = request.headers.get('x-internal-request') === 'true';
-    const session = await auth();
+    const isInternal = isInternalRequest(request);
+    const session = isInternal ? null : await auth();
     if (!session?.user && !isInternal) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+    // Klarify och Studio har i dag en gemensam organisation (1) för interna anrop
     const orgId = isInternal ? 1 : parseInt((session!.user as any).orgId);
     const models = await prisma.semanticModel.findMany({
       where: { orgId },
       include: { _count: { select: { views: true } } },
       orderBy: { updatedAt: 'desc' },
     });
-    return Response.json(models);
+    // Klarify behöver aldrig anslutningens lösenord
+    return Response.json(isInternal ? models.map(withoutSecrets) : models);
   } catch (e) {
     return Response.json({ error: 'Server error' }, { status: 500 });
   }
